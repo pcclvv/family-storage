@@ -248,7 +248,9 @@ def log(c, who, action, detail):
 def get_state():
     c = conn()
     rooms = [dict(r) for r in c.execute("SELECT * FROM rooms ORDER BY sort, id")]
-    cabs = [dict(r) for r in c.execute("SELECT * FROM cabinets ORDER BY room_id, sort, id")]
+    # 柜子按编号自然排序（A1、A2…B1、B2…B10），改名/删了再补也归位
+    cabs = [dict(r) for r in c.execute(
+        "SELECT * FROM cabinets ORDER BY room_id, LENGTH(code), code, id")]
     items = [dict(r) for r in c.execute(
         "SELECT i.*, t.name AS tname, t.category AS tcat FROM items i "
         "LEFT JOIN types t ON t.id=i.type_id ORDER BY i.id DESC")]
