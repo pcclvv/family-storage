@@ -1,0 +1,10 @@
+# 运行时数据（不进仓库）
+data/*.db
+data/*.db-wal
+data/*.db-shm
+data/snapshot.json
+__pycache__/
+*.pyc
+.DS_Store
+_*.json
+ck.txt
