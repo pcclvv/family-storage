@@ -1,0 +1,1231 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#F5F1E8">
+<title>展展家里的柜子 · 家庭储物管家</title>
+<style>
+:root{
+  --bg:#F5F1E8;
+  --bg2:#EFE9DC;
+  --surface:#FFFDF9;
+  --ink:#2E2A26;
+  --muted:#8C8378;
+  --line:#E7DFD1;
+  --sage:#5E8B7A;
+  --sage-soft:#E6EFEA;
+  --clay:#C9793F;
+  --clay-soft:#FAEBDF;
+  --wood-1:#EFDFC5;
+  --wood-2:#E2CDA9;
+  --wood-3:#D3B98F;
+  --brass:#C4A05A;
+  --radius:20px;
+  --shadow-sm:0 1px 2px rgba(70,54,34,.05), 0 4px 14px rgba(70,54,34,.05);
+  --shadow-md:0 6px 24px rgba(70,54,34,.10), 0 2px 6px rgba(70,54,34,.06);
+  --shadow-lg:0 24px 60px rgba(50,38,22,.18);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  color:var(--ink);
+  background:
+    radial-gradient(1200px 600px at 12% -8%, #FFFDF7 0%, rgba(255,253,247,0) 60%),
+    radial-gradient(900px 500px at 100% 0%, #EFE7D8 0%, rgba(239,231,216,0) 55%),
+    var(--bg);
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,select,textarea{font-family:inherit;color:inherit}
+.wrap{max-width:1120px;margin:0 auto;padding:0 18px 90px}
+
+/* ---------- 顶栏 ---------- */
+header.top{
+  position:sticky;top:0;z-index:40;
+  backdrop-filter:saturate(160%) blur(14px);
+  -webkit-backdrop-filter:saturate(160%) blur(14px);
+  background:rgba(245,241,232,.82);
+  border-bottom:1px solid rgba(231,223,209,.7);
+}
+.top-in{max-width:1120px;margin:0 auto;padding:14px 18px;display:flex;align-items:center;gap:10px}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.brand-mark{
+  width:38px;height:38px;border-radius:12px;flex:0 0 auto;
+  background:linear-gradient(160deg,#7FA593,#5E8B7A);
+  display:grid;place-items:center;box-shadow:0 6px 14px rgba(94,139,122,.28);
+}
+.brand-mark svg{width:21px;height:21px;fill:none;stroke:#fff;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.brand h1{font-size:17px;margin:0;font-weight:650;letter-spacing:.2px}
+.brand p{margin:1px 0 0;font-size:11.5px;color:var(--muted);letter-spacing:.4px}
+.top-spacer{flex:1}
+.top-btn{
+  display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:999px;
+  font-size:13px;background:var(--surface);border:1px solid var(--line);color:#6E6250;
+  box-shadow:var(--shadow-sm);transition:.18s;white-space:nowrap;
+}
+.top-btn:active{transform:scale(.97)}
+.top-btn.solid{background:linear-gradient(160deg,#6F9A88,#527E6D);color:#fff;border-color:transparent;
+  box-shadow:0 6px 16px rgba(94,139,122,.26)}
+.who-dot{width:7px;height:7px;border-radius:50%;background:var(--sage)}
+.who-chip{display:inline-flex;align-items:center;gap:7px;padding:8px 13px;border-radius:999px;font-size:13px;
+  background:var(--surface);border:1px solid var(--line);color:var(--muted);box-shadow:var(--shadow-sm)}
+.who-chip b{color:var(--ink);font-weight:600}
+.who-chip{white-space:nowrap}
+@media (max-width:600px){
+  .brand h1{font-size:15.5px;white-space:nowrap}
+  .brand p{display:none}
+  .top-btn .t{display:none}
+  .top-btn{padding:9px 11px}
+  .who-chip span.t{display:none}
+}
+
+/* ---------- 概览 ---------- */
+.overview{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:12px 0 2px;max-width:330px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:13px;
+  padding:8px 11px;box-shadow:var(--shadow-sm)}
+.stat span{display:block;font-size:10.5px;color:var(--muted);letter-spacing:.3px}
+.stat b{display:block;font-size:18px;font-weight:650;margin-top:1px;letter-spacing:.2px}
+.stat b i{font-size:11px;font-style:normal;color:var(--muted);font-weight:500;margin-left:2px}
+.stat.link{cursor:pointer;transition:.16s;position:relative;padding-right:20px}
+.stat.link:active{transform:scale(.985)}
+.stat.link::after{content:"›";position:absolute;right:8px;top:50%;transform:translateY(-50%);
+  color:#CDBFA9;font-size:15px;line-height:1;font-weight:400}
+.stat.link .tap{display:block;margin-top:2px;font-size:9px;color:#A99C88;font-style:normal;letter-spacing:.2px}
+
+/* ---------- 全部物品明细 ---------- */
+.all-group{margin-bottom:13px}
+.all-ghead{display:flex;align-items:center;gap:7px;font-size:11.5px;color:#8A7E6B;margin:0 2px 7px}
+.all-ghead b{font-size:11.5px;color:#3F6B5A;background:var(--sage-soft);border:1px solid #CFE0D7;
+  border-radius:7px;padding:2px 7px;letter-spacing:.4px;font-weight:700}
+.all-ghead .cnt{margin-left:auto;font-size:11px;color:#B4A894}
+.all-row{display:flex;align-items:center;gap:9px;padding:10px 11px;border-radius:13px;
+  background:#FBF7EF;border:1px solid #EFE7D8;margin-bottom:7px}
+.all-row .catdot{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
+.all-row .body{flex:1;min-width:0}
+.all-row .body b{font-size:13.5px;font-weight:600}
+.all-row .body small{display:block;font-size:11px;color:var(--muted);margin-top:1px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.all-row .go{font-size:18px;color:#CFC2AC;line-height:1;padding:0 2px;flex:0 0 auto}
+
+/* ---------- 搜索 ---------- */
+.searchbar{margin:16px 0 6px;position:relative}
+.searchbar input{
+  width:100%;padding:14px 16px 14px 44px;border-radius:16px;font-size:14.5px;
+  background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow-sm);
+  outline:none;transition:.2s;
+}
+.searchbar input:focus{border-color:#C9D9D0;box-shadow:0 0 0 4px rgba(94,139,122,.10)}
+.searchbar .ico{position:absolute;left:15px;top:50%;transform:translateY(-50%);opacity:.42}
+.searchbar .ico svg{width:17px;height:17px;stroke:var(--ink);fill:none;stroke-width:1.9;stroke-linecap:round}
+.searchbar.mini{margin:14px 0 0}
+.searchbar.mini input{padding:9px 40px 9px 36px;font-size:13px;border-radius:12px}
+.searchbar.mini .ico{left:12px}
+.searchbar.mini .ico svg{width:15px;height:15px}
+.searchbar.mini .search-clear{right:6px;width:26px;height:26px;font-size:12px}
+.search-clear{position:absolute;right:10px;top:50%;transform:translateY(-50%);
+  width:28px;height:28px;border-radius:50%;display:none;place-items:center;
+  background:var(--bg2);color:var(--muted);font-size:14px}
+.search-clear.on{display:grid}
+
+/* ---------- 房间 ---------- */
+.room{margin-top:17px}
+.room-head{display:flex;align-items:center;gap:10px;margin:0 2px 10px}
+.room-head h2{margin:0;font-size:16.5px;font-weight:650;letter-spacing:.3px}
+.room-head .meta{font-size:12px;color:var(--muted)}
+.room-head .rule{flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
+.room-add{font-size:12px;color:#5F7F71;background:var(--sage-soft);border:1px solid #D3E4DA;
+  border-radius:999px;padding:5px 10px;white-space:nowrap}
+.room-add:active{transform:scale(.96)}
+
+/* 不管几个柜子，都排两行：列数 = 柜子数/2 向上取整；宽度自动均分 */
+.cabs{display:flex;flex-direction:column;gap:13px}
+.cab-row{display:flex;gap:13px;align-items:stretch}
+.cab{flex:2 1 0%;min-width:0}
+.cab.half{flex:1 1 0%}
+.cabs.dense{gap:10px}
+.cabs.dense .cab-head{padding:8px 8px 0;gap:4px}
+.cabs.dense .cab-body{height:100px;margin:7px 8px 0}
+.cabs.dense .cab-foot{padding:8px 9px 9px;font-size:10.5px}
+.cabs.dense .ins-line{font-size:10.5px;padding:2px 5px}
+@media (max-width:560px){.cabs{gap:11px}.cab-row{gap:11px}}
+
+/* ---------- 柜子卡片：木柜 + 半透明玻璃门 ---------- */
+.cab{
+  position:relative;border-radius:16px;padding:0;text-align:left;
+  background:linear-gradient(180deg,#FDFAF3,#F7F0E2);
+  border:1px solid #E6DCC8;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 1px 2px rgba(70,54,34,.05),0 6px 16px rgba(70,54,34,.06);
+  overflow:hidden;
+  transition:transform .2s ease,box-shadow .24s ease,border-color .2s;
+}
+.cab:hover{transform:translateY(-3px);border-color:#DED0B6;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 12px 26px rgba(70,54,34,.13),0 3px 8px rgba(70,54,34,.07)}
+.cab:active{transform:scale(.985)}
+.cab-head{display:flex;align-items:center;gap:6px;padding:10px 11px 0}
+.cab-code{font-size:11.5px;font-weight:700;letter-spacing:.7px;color:#7A6A50;
+  background:linear-gradient(180deg,#F7EDDA,#EFE1C7);border:1px solid #E4D6BC;border-radius:7px;padding:2px 7px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.85)}
+.cab-name{font-size:11px;color:#9A8E7C;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cab-count{margin-left:auto;font-size:11px;color:#8A7E6B;background:rgba(255,255,255,.75);
+  border-radius:999px;padding:2px 7px;border:1px solid #EADFCC;white-space:nowrap}
+.cab-count.hot{background:var(--sage-soft);border-color:#CFE0D7;color:#3F6B5A;font-weight:600}
+
+.cab-body{position:relative;height:118px;margin:9px 11px 0;perspective:700px;
+  border-radius:9px;box-shadow:0 8px 14px -9px rgba(84,64,40,.45)}
+.cab-frame{
+  position:absolute;inset:0;border-radius:9px;overflow:hidden;
+  background:linear-gradient(160deg,var(--wood-1),var(--wood-2) 55%,var(--wood-3));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.6),inset 0 -3px 8px rgba(120,92,55,.18);
+}
+.cab-frame::before{ /* 顶板高光 */
+  content:"";position:absolute;left:0;right:0;top:0;height:6px;z-index:1;
+  background:linear-gradient(180deg,rgba(255,255,255,.55),rgba(255,255,255,0));
+}
+.cab-frame::after{
+  content:"";position:absolute;inset:0;opacity:.24;
+  background:repeating-linear-gradient(90deg,rgba(150,120,76,.20) 0 1px,transparent 1px 7px);
+}
+.cab-inside{
+  position:absolute;inset:6px;border-radius:6px;background:#75634F;
+  box-shadow:inset 0 4px 12px rgba(0,0,0,.30);
+  display:flex;flex-direction:column;justify-content:flex-end;gap:3px;padding:5px;
+  overflow:hidden;z-index:1;
+}
+.ins-line{
+  height:17px;border-radius:4px;display:flex;align-items:center;gap:4px;padding:0 5px;
+  font-size:9.5px;color:#332B22;white-space:nowrap;overflow:hidden;
+  box-shadow:0 1px 1px rgba(0,0,0,.12);
+}
+.ins-line b{font-weight:700;overflow:hidden;text-overflow:ellipsis}
+.ins-line em{font-style:normal;opacity:.62;font-size:8.5px;margin-left:auto;padding-left:3px}
+.ins-more{font-size:8.5px;color:rgba(255,255,255,.62);text-align:right;padding-right:2px}
+.ins-empty{font-size:9.5px;color:rgba(255,246,230,.66);text-align:center;margin:auto}
+.cab:hover .ins-line{filter:saturate(106%) brightness(1.03)}
+
+/* 半透明柜门：透过门能看清里面的东西 */
+.cab-door{
+  position:absolute;top:0;bottom:0;width:50%;z-index:2;
+  background:linear-gradient(150deg,rgba(255,253,248,.32),rgba(233,221,199,.18) 58%,rgba(208,190,160,.26));
+  border:1px solid rgba(255,255,255,.5);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.62),inset 0 0 12px rgba(255,255,255,.22),0 1px 4px rgba(110,86,54,.12);
+  backdrop-filter:blur(1px) saturate(110%);
+  -webkit-backdrop-filter:blur(1px) saturate(110%);
+  transition:transform .5s cubic-bezier(.2,.85,.2,1),box-shadow .3s,background .3s;
+  overflow:hidden;
+}
+.cab-door::before{ /* 玻璃斜向高光 */
+  content:"";position:absolute;inset:0;
+  background:linear-gradient(115deg,rgba(255,255,255,.30) 0%,rgba(255,255,255,.05) 36%,rgba(255,255,255,0) 52%,rgba(255,255,255,.13) 100%);
+}
+.cab-door::after{ /* 门框 */
+  content:"";position:absolute;inset:4px;border:1px solid rgba(255,255,255,.4);border-radius:4px;
+}
+.cab-door.left{left:0;transform-origin:left center;border-radius:9px 3px 3px 9px}
+.cab-door.right{right:0;transform-origin:right center;border-radius:3px 9px 9px 3px}
+/* 小柜子只有一张门：整扇，从左边开 */
+.cab-door.single{left:0;right:0;width:auto;transform-origin:left center;border-radius:9px}
+.cab:hover .cab-door.left{transform:rotateY(-17deg);box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 6px 16px rgba(90,70,42,.16)}
+.cab:hover .cab-door.right{transform:rotateY(17deg);box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 6px 16px rgba(90,70,42,.16)}
+.cab:hover .cab-door.single{transform:rotateY(-14deg);box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 8px 20px rgba(90,70,42,.18)}
+.handle{position:absolute;top:50%;width:4px;height:24px;border-radius:3px;
+  background:linear-gradient(180deg,#F1DCA8,#CBA65F 46%,#A98842);
+  box-shadow:0 1px 2px rgba(80,60,30,.4),inset 0 1px 0 rgba(255,255,255,.55);
+  transform:translateY(-50%);z-index:3}
+.cab-door.left .handle{right:6px}
+.cab-door.right .handle{left:6px}
+.cab-door.single .handle{right:7px;height:27px;width:5px}
+
+.cab-foot{padding:9px 11px 11px;font-size:11.5px;color:#8A7E6B;line-height:1.35;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cab-foot b{color:#5C4E3B;font-weight:650}
+.cab-foot .empty{color:#B4A794}
+
+/* 小柜子（半格）：窄柜，单门，内部只留彩色叠放条 */
+.cab.half{border-radius:14px}
+.cab.half .cab-head{padding:8px 8px 0;gap:4px}
+.cab.half .cab-code{font-size:10px;padding:1px 5px;letter-spacing:.3px;border-radius:6px}
+.cab.half .cab-name{display:none}
+.cab.half .cab-count{display:none}
+.cab.half .cab-body{height:96px;margin:7px 8px 0}
+.cab.half .cab-inside{inset:5px;padding:4px;gap:2px}
+.cab.half .ins-line{height:9px;padding:0;border-radius:3px;box-shadow:0 1px 1px rgba(0,0,0,.14)}
+.cab.half .ins-line b,.cab.half .ins-line em{display:none}
+.cab.half .ins-more{font-size:8px;text-align:center;padding-right:0}
+.cab.half .ins-empty{font-size:8.5px}
+.cab.half .cab-foot{padding:7px 6px 8px;font-size:9.5px;text-align:center}
+.cab.half:hover .cab-door.single{transform:rotateY(-12deg)}
+.cabs.dense .cab.half .cab-body{height:84px}
+.cabs.dense .cab.half .cab-foot{font-size:9px;padding:6px 5px 7px}
+
+/* ---------- 搜索结果 ---------- */
+.results{margin-top:18px;display:none}
+.results.on{display:block}
+.res-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;
+  padding:12px 14px;margin-bottom:9px;box-shadow:var(--shadow-sm);
+  display:flex;align-items:center;gap:11px;width:100%;text-align:left}
+.res-card:active{transform:scale(.99)}
+.res-loc{font-size:11px;font-weight:700;color:#3F6B5A;background:var(--sage-soft);
+  border-radius:7px;padding:3px 7px;flex:0 0 auto;letter-spacing:.4px}
+.res-main{min-width:0;flex:1}
+.res-main b{font-size:14px;font-weight:600}
+.res-main small{display:block;color:var(--muted);font-size:11.5px;margin-top:2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.res-qty{font-size:12px;color:var(--muted);flex:0 0 auto}
+
+/* ---------- 最近动态 ---------- */
+.activity{margin-top:30px}
+.activity-head{display:flex;align-items:center;gap:8px;margin:0 2px 10px}
+.activity-head h3{margin:0;font-size:14px;font-weight:600;color:#6B6053}
+.activity-head .dot{width:6px;height:6px;border-radius:50%;background:#CFC4B1}
+.logs{background:var(--surface);border:1px solid var(--line);border-radius:16px;
+  box-shadow:var(--shadow-sm);overflow:hidden}
+.log-row{display:flex;gap:10px;padding:11px 14px;font-size:12.5px;color:#5F5548;
+  border-bottom:1px solid #F3EDE1}
+.log-row:last-child{border-bottom:none}
+.log-row .who{font-weight:600;color:#3E3830;flex:0 0 auto}
+.log-row .txt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.log-row .at{color:#B4A894;font-size:11px;flex:0 0 auto}
+
+/* ---------- 面板 ---------- */
+.mask{position:fixed;inset:0;background:rgba(46,38,26,.34);backdrop-filter:blur(2px);
+  opacity:0;pointer-events:none;transition:opacity .25s;z-index:60}
+.mask.on{opacity:1;pointer-events:auto}
+.sheet{position:fixed;z-index:70;left:50%;bottom:0;transform:translate(-50%,104%);
+  width:min(600px,100%);max-height:92vh;background:var(--surface);
+  border-radius:24px 24px 0 0;box-shadow:var(--shadow-lg);
+  transition:transform .32s cubic-bezier(.2,.85,.2,1);
+  display:flex;flex-direction:column;overflow:hidden}
+.sheet.on{transform:translate(-50%,0)}
+@media (min-width:720px){
+  .sheet{bottom:auto;top:50%;transform:translate(-50%,-46%) scale(.98);border-radius:22px;opacity:0;max-height:86vh}
+  .sheet.on{transform:translate(-50%,-50%) scale(1);opacity:1}
+}
+.sheet-grip{width:38px;height:4px;border-radius:999px;background:#E5DCCB;margin:9px auto 2px;flex:0 0 auto}
+@media (min-width:720px){.sheet-grip{display:none}}
+.sheet-head{padding:14px 18px 10px;display:flex;align-items:flex-start;gap:10px;flex:0 0 auto}
+.sheet-title{flex:1;min-width:0}
+.sheet-title .line1{display:flex;align-items:center;gap:8px}
+.sheet-title h3{margin:0;font-size:17px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sheet-badge{font-size:11.5px;font-weight:700;letter-spacing:.8px;color:#7A6A50;
+  background:#F1E6D2;border:1px solid #E4D6BC;border-radius:7px;padding:2px 7px}
+.sheet-title p{margin:4px 0 0;font-size:12px;color:var(--muted)}
+.icon-btn{width:32px;height:32px;border-radius:50%;background:var(--bg2);display:grid;place-items:center;
+  color:#8A7E6B;font-size:15px;flex:0 0 auto;transition:.16s}
+.icon-btn:active{transform:scale(.94)}
+.tabs{display:flex;gap:6px;padding:0 18px 8px;flex:0 0 auto}
+.tab{padding:7px 13px;border-radius:999px;font-size:13px;color:#7A6E5C;background:#F4EEE1;
+  border:1px solid #E8DDC9}
+.tab.on{background:var(--sage-soft);border-color:#C6DACE;color:#3F6B5A;font-weight:600}
+.sheet-body{overflow:auto;padding:4px 18px 12px;flex:1 1 auto;-webkit-overflow-scrolling:touch}
+.items{display:flex;flex-direction:column;gap:8px;margin-bottom:6px}
+.item{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:14px;
+  background:#FBF7EF;border:1px solid #EFE7D8}
+.item .cat{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
+.item .body{flex:1;min-width:0;cursor:pointer}
+.item .body b{font-size:14px;font-weight:600}
+.item .body small{display:block;font-size:11.5px;color:var(--muted);margin-top:2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qty{display:flex;align-items:center;gap:2px;background:#fff;border:1px solid #EDE4D4;border-radius:999px;padding:2px}
+.qty button{width:24px;height:24px;border-radius:50%;font-size:14px;color:#7A6E5C;display:grid;place-items:center}
+.qty button:active{background:var(--bg2)}
+.qty span{min-width:18px;text-align:center;font-size:12.5px;font-weight:600}
+.del{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;color:#C08A73;flex:0 0 auto}
+.del:active{background:#F8E7DF}
+.mini-edit{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;color:#8A9C90;flex:0 0 auto}
+.mini-edit:active{background:var(--sage-soft)}
+.empty-state{text-align:center;padding:24px 12px;color:var(--muted);font-size:13px;
+  background:#FBF8F1;border:1px dashed #E5DAC5;border-radius:14px;margin-bottom:6px}
+.empty-state .big{font-size:26px;display:block;margin-bottom:6px;opacity:.55}
+
+/* 表单 */
+.form{border-top:1px solid #F0E9DC;padding:14px 18px 18px;background:#FDFBF6;flex:0 0 auto}
+.form-label{font-size:12px;color:#8E8271;margin:0 2px 7px;letter-spacing:.3px}
+.form-row{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+.chips{display:flex;gap:7px;overflow-x:auto;padding-bottom:3px;margin-bottom:10px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:0 0 auto;display:inline-flex;align-items:center;cursor:pointer;padding:7px 12px;border-radius:999px;font-size:12.5px;
+  background:#F4EEE1;border:1px solid #E8DDC9;color:#6E6250;transition:.15s}
+.chip:active{transform:scale(.96)}
+.chip.on{background:var(--sage-soft);border-color:#C6DACE;color:#3F6B5A;font-weight:600}
+.chip.used{opacity:.5}
+.chip[disabled]{cursor:default}
+.chips.wrap{flex-wrap:wrap;overflow:visible}
+.chip .x{font-style:normal;font-size:10px;opacity:.45;margin-left:5px}
+.chip.other{background:#F7F2E8;border:1px dashed #DCCFB6;color:#9A8E7C;font-size:12px}
+.field{flex:1;min-width:0;padding:12px 13px;border-radius:13px;font-size:14px;
+  background:#fff;border:1px solid #E9E0CF;outline:none;transition:.18s}
+.field:focus{border-color:#C6DACE;box-shadow:0 0 0 3px rgba(94,139,122,.10)}
+.field.small{flex:0 0 88px;text-align:center}
+.btn-primary{width:100%;padding:14px;border-radius:14px;font-size:15px;font-weight:600;color:#fff;
+  background:linear-gradient(160deg,#6F9A88,#527E6D);
+  box-shadow:0 8px 18px rgba(94,139,122,.28);transition:.16s}
+.btn-primary:active{transform:scale(.985)}
+.btn-primary[disabled]{opacity:.55;box-shadow:none}
+.btn-ghost{width:100%;padding:13px;border-radius:14px;font-size:14px;color:#8B5A46;
+  background:#FBEFE9;border:1px solid #F0D9CE}
+.btn-ghost:active{transform:scale(.985)}
+.form-tip{font-size:11.5px;color:#A79A87;margin:9px 2px 0;text-align:center}
+
+/* 物品库列表 */
+.lib-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;
+  background:#FBF7EF;border:1px solid #EFE7D8}
+.lib-row .body{flex:1;min-width:0;cursor:pointer}
+.lib-row .body b{font-size:13.5px;font-weight:600}
+.lib-row .body small{display:block;font-size:11px;color:var(--muted);margin-top:1px}
+.tag{font-size:11px;color:#8A7E6B;background:#F1E6D2;border:1px solid #E4D6BC;border-radius:6px;padding:2px 6px}
+.setting-block{background:#FBF7EF;border:1px solid #EFE7D8;border-radius:14px;padding:13px;margin-bottom:12px}
+.setting-block h4{margin:0 0 9px;font-size:13px;color:#6E6250;font-weight:600}
+
+/* toast */
+.toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,20px);
+  background:#3E3830;color:#fff;font-size:13px;padding:11px 18px;border-radius:999px;
+  opacity:0;pointer-events:none;transition:.24s;z-index:99;box-shadow:0 10px 30px rgba(0,0,0,.22);
+  max-width:86vw;text-align:center}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+
+/* 名字弹窗 */
+.mini-mask{position:fixed;inset:0;background:rgba(46,38,26,.36);z-index:80;display:none;place-items:center;padding:20px}
+.mini-mask.on{display:grid}
+.mini-card{background:var(--surface);border-radius:20px;padding:20px;width:min(340px,100%);box-shadow:var(--shadow-lg)}
+.mini-card h4{margin:0 0 4px;font-size:16px}
+.mini-card p{margin:0 0 14px;font-size:12.5px;color:var(--muted)}
+.mini-card .row{display:flex;gap:8px;margin-top:12px}
+.mini-card .ghost{flex:1;padding:12px;border-radius:12px;background:var(--bg2);font-size:14px;color:#6E6250}
+.mini-card .ok{flex:1;padding:12px;border-radius:12px;background:var(--sage);color:#fff;font-size:14px;font-weight:600}
+.foot-note{text-align:center;font-size:11.5px;color:#B3A794;margin-top:26px}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-in">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg viewBox="0 0 24 24"><path d="M3.5 10.5 12 3.6l8.5 6.9"/><path d="M5.5 9.6V20h13V9.6"/><path d="M9.6 20v-5.4h4.8V20"/></svg>
+      </div>
+      <div>
+        <h1>展展家里的柜子</h1>
+        <p>被子床单，放哪儿一看就知道</p>
+      </div>
+    </div>
+    <div class="top-spacer"></div>
+    <button class="top-btn" id="refreshBtn" title="刷新数据">⟳ <span class="t">刷新</span></button>
+    <button class="top-btn" id="libBtn">🧺 <span class="t">物品库</span></button>
+    <button class="who-chip" id="whoBtn">
+      <span class="who-dot"></span>
+      <span class="t">我是</span> <b id="whoName">家人</b>
+    </button>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="searchbar mini">
+    <span class="ico"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg></span>
+    <input id="q" placeholder="找东西，如「冬被」" autocomplete="off">
+    <button class="search-clear" id="qClear">✕</button>
+  </div>
+
+  <div class="overview">
+    <div class="stat link" id="stTotalCard" onclick="openAll()" role="button" tabindex="0"><span>物品总数</span><b id="stTotal">0<i>件</i></b><em class="tap">点开看明细 ›</em></div>
+    <div class="stat link" id="stTypesCard" onclick="openLib()" role="button" tabindex="0"><span>物品品类</span><b id="stTypes">0<i>种</i></b><em class="tap">点开物品库 ›</em></div>
+  </div>
+
+  <div id="rooms"></div>
+  <div class="results" id="results"></div>
+
+  <div class="activity">
+    <div class="activity-head"><span class="dot"></span><h3>最近动态</h3></div>
+    <div class="logs" id="logs"></div>
+  </div>
+
+  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见</div>
+</div>
+
+<div class="mask" id="mask"></div>
+
+<!-- 柜子面板 -->
+<section class="sheet" id="sheet" aria-hidden="true">
+  <div class="sheet-grip"></div>
+  <div class="sheet-head">
+    <div class="sheet-title">
+      <div class="line1">
+        <span class="sheet-badge" id="shCode">A1</span>
+        <h3 id="shTitle">柜子</h3>
+      </div>
+      <p id="shSub">里面 0 件物品</p>
+    </div>
+    <button class="icon-btn" id="shClose">✕</button>
+  </div>
+  <div class="tabs">
+    <button class="tab on" id="tabItems" onclick="switchTab('items')">柜内物品</button>
+    <button class="tab" id="tabSet" onclick="switchTab('set')">柜子设置</button>
+  </div>
+  <div class="sheet-body" id="paneItems">
+    <div class="items" id="shItems"></div>
+  </div>
+  <div class="sheet-body" id="paneSet" style="display:none">
+    <div class="setting-block">
+      <h4>柜子名称</h4>
+      <div class="form-row" style="margin-bottom:0">
+        <input class="field" id="cabName" placeholder="比如：换季被" maxlength="20">
+        <button class="top-btn solid" onclick="saveCabName()">保存</button>
+      </div>
+      <div class="form-tip" style="text-align:left;margin-top:8px">给柜子起个名字，一眼知道它装什么</div>
+    </div>
+    <div class="setting-block">
+      <h4>柜子编号</h4>
+      <div class="form-row" style="margin-bottom:0">
+        <input class="field" id="cabCode" placeholder="A1" maxlength="6">
+        <button class="top-btn solid" onclick="saveCabCode()">保存</button>
+      </div>
+      <div class="form-tip" style="text-align:left;margin-top:8px">编号在整个家里不能重复</div>
+    </div>
+    <div class="setting-block">
+      <h4>柜子大小</h4>
+      <div class="form-row" style="margin-bottom:0">
+        <button class="top-btn" id="szFull" onclick="setCabSize('full')">大柜子</button>
+        <button class="top-btn" id="szHalf" onclick="setCabSize('half')">小柜子（半格）</button>
+      </div>
+      <div class="form-tip" style="text-align:left;margin-top:8px">小柜子只占半格宽，适合矮柜、鞋柜；柜子数量可以随时用房间右边的「＋ 柜子」加，在下面删</div>
+    </div>
+    <div class="setting-block">
+      <h4>删掉这个柜子</h4>
+      <button class="btn-ghost" onclick="deleteCab()">删除柜子</button>
+      <div class="form-tip" style="text-align:left;margin-top:8px">柜子里的东西要先取出，才能删柜子</div>
+    </div>
+  </div>
+  <div class="form" id="addForm">
+    <div class="form-label">点一下，直接放进这个柜子（1 件）</div>
+    <div class="chips wrap" id="typeChips"></div>
+    <div class="form-tip" style="text-align:left">标 ✓ 的已经在这个柜子里了；要多件点物品旁的 ＋；这里没有的，去「物品库」加一种</div>
+  </div>
+</section>
+
+<!-- 物品库面板 -->
+<section class="sheet" id="libSheet" aria-hidden="true">
+  <div class="sheet-grip"></div>
+  <div class="sheet-head">
+    <div class="sheet-title">
+      <div class="line1"><h3>物品库</h3></div>
+      <p id="libSub">家里可能有这些东西，放柜子时直接选</p>
+    </div>
+    <button class="icon-btn" id="libClose">✕</button>
+  </div>
+  <div class="sheet-body">
+    <div class="setting-block">
+      <h4>数据备份</h4>
+      <div class="form-row" style="margin-bottom:0">
+        <button class="top-btn" onclick="exportData()">导出备份</button>
+        <button class="top-btn" onclick="el('importFile').click()">导入备份</button>
+        <input type="file" id="importFile" accept="application/json,.json" style="display:none">
+      </div>
+      <div class="form-tip" style="text-align:left;margin-top:8px">导出会存成一个 JSON 文件；换手机、重装或数据被重置时，导入就能整份恢复</div>
+    </div>
+    <div class="items" id="libList"></div>
+  </div>
+  <div class="form">
+    <div class="form-label">新增一种物品</div>
+    <div class="form-row">
+      <input class="field" id="libName" placeholder="如：冬被 / 凉席 / 毛巾被" maxlength="40">
+    </div>
+    <div class="chips wrap" id="catChips"></div>
+    <button class="btn-primary" id="libAdd">加到物品库</button>
+    <div class="form-row" style="margin-top:10px">
+      <input class="field" id="newCatName" placeholder="加个新种类，如 窗帘 / 抱枕" maxlength="10">
+      <button class="top-btn solid" id="catAddBtn">加种类</button>
+    </div>
+    <div class="form-tip">上面是物品种类，点 ✕ 可以删掉不用的；改一次名字，所有柜子里都跟着改</div>
+  </div>
+</section>
+
+<div class="mini-mask" id="whoMask">
+  <div class="mini-card">
+    <h4>你是谁呀？</h4>
+    <p>填个名字，家里人就能看到是谁放的、谁取走的（不填也不影响用）</p>
+    <input class="field" id="whoInput" placeholder="比如：妈妈 / 爸爸 / 小美" maxlength="10" style="width:100%">
+    <div class="row">
+      <button class="ghost" id="whoCancel">先不填</button>
+      <button class="ok" id="whoSave">就用这个</button>
+    </div>
+  </div>
+</div>
+
+<!-- 全部物品明细 -->
+<section class="sheet" id="allSheet" aria-hidden="true">
+  <div class="sheet-grip"></div>
+  <div class="sheet-head">
+    <div class="sheet-title">
+      <div class="line1"><h3>全部物品</h3></div>
+      <p id="allSub">共 0 件</p>
+    </div>
+    <button class="icon-btn" id="allClose">✕</button>
+  </div>
+  <div class="searchbar" style="margin:0 18px 10px">
+    <span class="ico"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg></span>
+    <input id="allQ" placeholder="在全部物品里找，比如「冬被」" autocomplete="off">
+  </div>
+  <div class="sheet-body"><div id="allList"></div></div>
+</section>
+
+<!-- 改名 / 改数量 弹窗 -->
+<div class="mini-mask" id="edMask">
+  <div class="mini-card">
+    <h4 id="edTitle">改物品</h4>
+    <p id="edSub">改了名字，所有柜子里都跟着改</p>
+    <input class="field" id="edName" placeholder="物品名称，如 冬被" maxlength="40" style="width:100%">
+    <div class="chips" id="edCats" style="margin:11px 0 0"></div>
+    <div class="form-row" id="edQtyRow" style="margin:2px 0 0">
+      <input class="field small" id="edQty" type="number" min="1" max="999" inputmode="numeric">
+      <input class="field" id="edNote" placeholder="备注（可留空）" maxlength="40">
+    </div>
+    <div class="row">
+      <button class="ghost" id="edCancel">取消</button>
+      <button class="ok" id="edSave">保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const BASE_COLOR = {"被子":"#9DC0AD","床单":"#E3C878","被套":"#DDA077","枕头":"#A9BEDB","毛毯":"#CFA6C0","其他":"#C3B9AA"};
+const PALETTE = ["#8FB0A8","#D9B36C","#B3A0C9","#C7A98B","#94AEBB","#D6A0A0","#A8B98E"];
+/* 种类来自后端，可以自己加，颜色按顺序分配 */
+function cats(){ return (state && state.categories && state.categories.length) ? state.categories : ["其他"]; }
+function catColor(name){
+  if(BASE_COLOR[name]) return BASE_COLOR[name];
+  const i = cats().indexOf(name);
+  return PALETTE[(i < 0 ? 0 : i) % PALETTE.length];
+}
+
+let state = null;
+let who = localStorage.getItem("storage_who") || "";
+let currentCab = null;
+let currentTab = "items";
+let libCat = "被子";
+
+function el(id){ return document.getElementById(id); }
+function esc(s){ return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function toast(msg){
+  const t = el("toast"); t.textContent = msg; t.classList.add("on");
+  clearTimeout(t._tm); t._tm = setTimeout(()=>t.classList.remove("on"), 1900);
+}
+async function api(method, path, body){
+  const res = await fetch(path, {
+    method,
+    headers: body ? {"Content-Type":"application/json"} : undefined,
+    body: body ? JSON.stringify(body) : undefined
+  });
+  if(!res.ok){
+    let msg = "操作失败";
+    try { msg = (await res.json()).error || msg; } catch(e){}
+    throw new Error(msg);
+  }
+  return res.json();
+}
+
+/* ---------- 加载与渲染 ---------- */
+let lastSyncAt = 0, lastSig = "";
+async function load(){
+  try{
+    state = await api("GET","/api/state");
+    lastSig = JSON.stringify(state);
+    lastSyncAt = Date.now();
+    render();
+  }catch(e){
+    toast("连不上服务，请刷新页面");
+  }
+}
+
+function render(){
+  if(!state) return;
+  el("whoName").textContent = who || "家人";
+  let total = 0;
+  state.rooms.forEach(r=>{ total += r.count; });
+  el("stTotal").innerHTML = total + "<i>件</i>";
+  el("stTypes").innerHTML = (state.types || []).length + "<i>种</i>";
+
+  el("rooms").innerHTML = state.rooms.map(r=>{
+    const n = r.cabinets.length;
+    const rows = splitRows(r.cabinets);
+    const dense = Math.max(1, ...rows.map(x=>x.length)) >= 4;
+    const cls = "cabs" + (dense ? " dense" : "");
+    return `
+    <section class="room">
+      <div class="room-head">
+        <h2>${esc(r.name)}</h2>
+        <span class="meta">${n} 个柜子 · ${r.count} 件</span>
+        <span class="rule"></span>
+        <button class="room-add" onclick="addCabinet(${r.id})">＋ 柜子</button>
+      </div>
+      <div class="${cls}">${rows.map(row=>row.length?
+        `<div class="cab-row">${row.map(c=>cabHTML(r,c)).join("")}</div>`:"").join("")}</div>
+    </section>`;
+  }).join("");
+
+  el("logs").innerHTML = state.logs.length ? state.logs.map(l=>`
+    <div class="log-row">
+      <span class="who">${esc(l.who||"家人")}</span>
+      <span class="txt">${esc(l.detail)}</span>
+      <span class="at">${esc(l.at||"")}</span>
+    </div>`).join("") : `<div class="log-row"><span class="txt">还没有动态</span></div>`;
+
+  if(currentCab && el("sheet").classList.contains("on")) refreshSheet();
+  if(el("libSheet").classList.contains("on")) renderLib();
+  if(el("allSheet").classList.contains("on")) renderAll();
+}
+
+/* 柜子自动分两行：大柜占 2 份宽、小柜占 1 份，每行都铺满不留空；
+   按顺序找「两行总宽最接近」的切分点：4 个 → 2+2，5 个 → 2+3，6 个 → 3+3 */
+function splitRows(cabs){
+  const n = cabs.length;
+  if(n <= 2) return [cabs.slice(), []];
+  const w = c => c.size === "half" ? 1 : 2;
+  const total = cabs.reduce((s,c)=>s+w(c), 0);
+  let best = 1, bestDiff = Infinity, acc = 0;
+  const pre = [];
+  for(let i=0;i<n;i++){ acc += w(cabs[i]); pre.push(acc); }
+  for(let i=1;i<n;i++){
+    const d = Math.abs(pre[i-1]*2 - total);
+    if(d < bestDiff){ bestDiff = d; best = i; }
+  }
+  const r1 = cabs.slice(0, best), r2 = cabs.slice(best);
+  const loneHalf = row => row.length === 1 && row[0].size === "half";
+  if(loneHalf(r1) && r2.length){ r1.push(r2.shift()); }
+  else if(loneHalf(r2) && r1.length){ r1.push(r2.shift()); }
+  return [r1, r2];
+}
+
+/* 半透明柜门 + 柜内物品直接可读 */
+function cabHTML(room, cab){
+  const items = cab.items || [];
+  const isHalf = cab.size === "half";
+  const maxShown = isHalf ? 5 : 4;
+  const shown = items.slice(0, maxShown);
+  const inner = items.length
+    ? shown.map(i=>`<div class="ins-line" style="background:${catColor(i.category)}E6">
+         <b>${esc(i.name)}</b><em>×${i.qty}</em></div>`).join("")
+      + (items.length > shown.length ? `<div class="ins-more">还有 ${items.length-shown.length} 种…</div>` : "")
+    : `<div class="ins-empty">空柜子</div>`;
+  const foot = isHalf
+    ? (items.length ? `<b>${cab.count}</b> 件` : `<span class="empty">空</span>`)
+    : (items.length
+        ? `<b>${cab.count}</b> 件 · ${items.map(i=>esc(i.name)).slice(0,4).join("、")}${items.length>4?"…":""}`
+        : `<span class="empty">还没有东西，点开可以放</span>`);
+  const doors = isHalf
+    ? `<div class="cab-door single"><i class="handle"></i></div>`
+    : `<div class="cab-door left"><i class="handle"></i></div><div class="cab-door right"><i class="handle"></i></div>`;
+  return `
+    <button class="cab ${isHalf?"half":""}" onclick="openCab(${cab.id})" data-cab="${cab.id}" title="${esc(cab.code)}${cab.name?" "+esc(cab.name):""}">
+      <div class="cab-head">
+        <span class="cab-code">${esc(cab.code)}</span>
+        ${cab.name?`<span class="cab-name">${esc(cab.name)}</span>`:""}
+        ${cab.count?`<span class="cab-count ${cab.count>=6?"hot":""}">${cab.count} 件</span>`:""}
+      </div>
+      <div class="cab-body">
+        <div class="cab-frame"><div class="cab-inside">${inner}</div></div>
+        ${doors}
+      </div>
+      <div class="cab-foot">${foot}</div>
+    </button>`;
+}
+
+/* ---------- 柜子面板 ---------- */
+function findCab(id){
+  for(const r of state.rooms){
+    for(const c of r.cabinets){
+      if(c.id === id) return {room:r, cab:c};
+    }
+  }
+  return null;
+}
+/* 按条目 id 找它在哪个房间/柜子（全部物品、搜索结果都用得上） */
+function findItem(id){
+  if(!state) return null;
+  for(const r of state.rooms){
+    for(const c of r.cabinets){
+      const it = (c.items||[]).find(x=>x.id===id);
+      if(it) return {room:r, cab:c, item:it};
+    }
+  }
+  return null;
+}
+function openCab(id){
+  const hit = findCab(id);
+  if(!hit) return;
+  currentCab = id;
+  switchTab("items");
+  el("cabName").value = hit.cab.name || "";
+  el("cabCode").value = hit.cab.code || "";
+  refreshSheet();
+  el("mask").classList.add("on");
+  el("sheet").classList.add("on");
+  el("sheet").setAttribute("aria-hidden","false");
+}
+function closeSheet(){
+  el("mask").classList.remove("on");
+  el("sheet").classList.remove("on");
+  el("sheet").setAttribute("aria-hidden","true");
+  currentCab = null;
+}
+function switchTab(t){
+  currentTab = t;
+  el("tabItems").classList.toggle("on", t==="items");
+  el("tabSet").classList.toggle("on", t==="set");
+  el("paneItems").style.display = t==="items" ? "" : "none";
+  el("paneSet").style.display = t==="set" ? "" : "none";
+  el("addForm").style.display = t==="items" ? "" : "none";
+}
+function refreshSheet(){
+  const hit = findCab(currentCab); if(!hit) return;
+  const {room, cab} = hit;
+  el("shCode").textContent = cab.code;
+  el("shTitle").textContent = (cab.name ? cab.name + " · " : "") + room.name;
+  el("shSub").textContent = cab.items.length ? `里面 ${cab.items.length} 种 · 共 ${cab.count} 件` : "还是空的，先放点东西进去";
+  el("szFull").className = "top-btn" + (cab.size === "half" ? "" : " solid");
+  el("szHalf").className = "top-btn" + (cab.size === "half" ? " solid" : "");
+  el("shItems").innerHTML = cab.items.length ? cab.items.map(i=>`
+    <div class="item">
+      <span class="cat" style="background:${catColor(i.category)}"></span>
+      <div class="body" onclick="openItemEdit(${i.id})">
+        <b>${esc(i.name)}</b>
+        <small>${esc(i.category)}${i.note?" · "+esc(i.note):""}${i.who?" · "+esc(i.who)+"放的":""}</small>
+      </div>
+      <div class="qty">
+        <button onclick="bumpQty(${i.id},-1)">−</button>
+        <span>${i.qty}</span>
+        <button onclick="bumpQty(${i.id},1)">＋</button>
+      </div>
+      <button class="mini-edit" onclick="openItemEdit(${i.id})" title="改名字/数量/备注">✎</button>
+      <button class="del" onclick="removeItem(${i.id})" title="取出">✕</button>
+    </div>`).join("")
+    : `<div class="empty-state"><span class="big">🧺</span>这个柜子还空着<br>在下面从物品库选一件放进来</div>`;
+  renderTypeChips();
+  if(currentTab === "set"){
+    el("cabName").value = cab.name || "";
+    el("cabCode").value = cab.code || "";
+  }
+}
+
+function renderTypeChips(){
+  const types = state.types || [];
+  if(!types.length){
+    el("typeChips").innerHTML = `<span class="chip" style="cursor:default">物品库还空着，点右上角「物品库」加一种</span>`;
+    return;
+  }
+  const hit = findCab(currentCab);
+  const inCab = new Set(hit ? hit.cab.items.map(i=>i.type_id) : []);
+  el("typeChips").innerHTML = types.map(t=>{
+    /* 已经在本柜：绿勾，点不动 */
+    if(inCab.has(t.id)){
+      return `<button class="chip used" disabled>${esc(t.name)} ✓</button>`;
+    }
+    /* 已经在别的柜子：灰掉并写明位置，点了给提示 */
+    if(t.place){
+      return `<button class="chip used other" onclick="usedHint(${t.id})">${esc(t.name)} · 在${esc(t.place.code)}</button>`;
+    }
+    return `<button class="chip" onclick="putItem(${t.id})">${esc(t.name)}</button>`;
+  }).join("");
+}
+
+function usedHint(typeId){
+  const t = (state.types || []).find(x=>x.id===typeId);
+  if(!t || !t.place) return;
+  toast(`「${t.name}」已经在 ${t.place.label} 里（${t.place.qty} 件）。一件物品只能放一个柜子，想挪先在那里取出`);
+}
+
+/* 点一下＝直接放 1 件 */
+let putting = false;
+async function putItem(typeId){
+  if(!currentCab || putting) return;
+  const t = (state.types || []).find(x=>x.id===typeId);
+  if(t && t.place && t.place.cabinet_id !== currentCab){
+    return usedHint(typeId);
+  }
+  putting = true;
+  try{
+    state = await api("POST","/api/items",{cabinetId: currentCab, typeId, qty: 1, note: "", who});
+    render();
+    toast("已放进 " + (findCab(currentCab)?.cab.code || "") + " ✓（1 件）");
+  }catch(e){ toast(e.message || "放不进去"); }
+  finally{ putting = false; }
+}
+
+el("mask").onclick = ()=>{ closeSheet(); closeLib(); closeAll(); };
+el("shClose").onclick = closeSheet;
+
+async function bumpQty(id, delta){
+  const hit = findItem(id); if(!hit) return;
+  const next = hit.item.qty + delta;
+  if(next < 1){ return removeItem(id); }
+  try{
+    state = await api("PATCH","/api/items/"+id,{qty:next, who});
+    render();
+  }catch(e){ toast(e.message || "修改失败"); }
+}
+
+async function removeItem(id){
+  const hit = findItem(id);
+  const name = hit ? hit.item.name : "这件东西";
+  try{
+    await api("DELETE","/api/items/"+id+"?who="+encodeURIComponent(who||"家人"));
+    state = await api("GET","/api/state");
+    render(); toast(`「${name}」已取出，点物品名可以再放回来`);
+  }catch(e){ toast(e.message || "取出失败"); }
+}
+
+/* ---------- 改名字 / 数量 / 备注（弹窗，不再用浏览器 prompt） ---------- */
+let edCtx = null;
+function openItemEdit(id){
+  const hit = findItem(id); if(!hit) return;
+  const it = hit.item;
+  edCtx = {kind:"item", itemId:it.id, typeId:it.type_id, cabId:it.cabinet_id,
+           name:it.name, cat:it.category, qty:it.qty, note:it.note || ""};
+  drawEdit("改这件物品", "改名字后，所有柜子里同名物品都跟着改", true);
+}
+function openTypeEdit(id){
+  const t = (state.types||[]).find(x=>x.id===id); if(!t) return;
+  edCtx = {kind:"type", typeId:t.id, name:t.name, cat:t.category};
+  drawEdit("修改物品库", "物品库是基础数据，改一次柜子里都跟着改", false);
+}
+function drawEdit(title, sub, withQty){
+  el("edTitle").textContent = title;
+  el("edSub").textContent = sub;
+  el("edName").value = edCtx.name || "";
+  el("edQtyRow").style.display = withQty ? "" : "none";
+  if(withQty){
+    el("edQty").value = edCtx.qty || 1;
+    el("edNote").value = edCtx.note || "";
+  }
+  drawEdCats();
+  el("edMask").classList.add("on");
+  setTimeout(()=>el("edName").focus(), 120);
+}
+function drawEdCats(){
+  el("edCats").innerHTML = cats().map(c=>
+    `<button class="chip ${edCtx.cat===c?"on":""}" onclick="pickEdCat('${esc(c)}')">${esc(c)}</button>`).join("");
+}
+function pickEdCat(c){
+  edCtx.name = el("edName").value;      // 先记住已输入的文字
+  edCtx.cat = c;
+  el("edName").value = edCtx.name;
+  drawEdCats();
+}
+function closeEdit(){ el("edMask").classList.remove("on"); edCtx = null; }
+async function saveEdit(){
+  if(!edCtx) return;
+  const name = el("edName").value.trim();
+  if(!name){ toast("名字不能空着"); el("edName").focus(); return; }
+  const cat = edCtx.cat || "其他";
+  const btn = el("edSave"); btn.disabled = true;
+  try{
+    const t = (state.types||[]).find(x=>x.id===edCtx.typeId);
+    const needType = !t || t.name !== name || t.category !== cat;
+    if(needType && edCtx.typeId){
+      state = await api("PATCH","/api/types/"+edCtx.typeId,{name, category:cat, who});
+    }
+    if(edCtx.kind === "item"){
+      let typeId = edCtx.typeId;
+      if(needType && !typeId){          // 老数据没有基础物品：补一条，再挂上去
+        state = await api("POST","/api/types",{name, category:cat, who});
+        const created = (state.types||[]).find(x=>x.name === name);
+        typeId = created ? created.id : 0;
+      }
+      const qty = Math.max(1, Math.min(999, parseInt(el("edQty").value||"1",10) || 1));
+      const note = el("edNote").value.trim();
+      const body = {qty, note, who};
+      if(typeId) body.typeId = typeId;
+      state = await api("PATCH","/api/items/"+edCtx.itemId, body);
+    }
+    closeEdit(); render(); toast("已保存");
+  }catch(e){ toast(e.message || "保存失败"); }
+  finally{ btn.disabled = false; }
+}
+el("edCancel").onclick = closeEdit;
+el("edSave").onclick = saveEdit;
+el("edMask").addEventListener("click", e=>{ if(e.target === el("edMask")) closeEdit(); });
+el("edName").addEventListener("keydown", e=>{ if(e.key==="Enter") saveEdit(); });
+
+/* ---------- 柜子设置 ---------- */
+async function saveCabName(){
+  try{
+    state = await api("PATCH","/api/cabinets/"+currentCab,{name: el("cabName").value.trim(), who});
+    render(); toast("柜子名已保存");
+  }catch(e){ toast(e.message || "保存失败"); }
+}
+async function saveCabCode(){
+  const code = el("cabCode").value.trim();
+  if(!code){ toast("编号不能为空"); return; }
+  try{
+    state = await api("PATCH","/api/cabinets/"+currentCab,{code, who});
+    render(); toast("编号已改成 " + code.toUpperCase());
+  }catch(e){ toast(e.message || "保存失败"); }
+}
+async function deleteCab(){
+  const hit = findCab(currentCab); if(!hit) return;
+  try{
+    state = await api("DELETE","/api/cabinets/"+currentCab+"?who="+encodeURIComponent(who||"家人"));
+    closeSheet(); render();
+    toast(hit.cab.count ? `柜子已删除，里面 ${hit.cab.count} 件也一并取出` : "柜子已删除");
+  }catch(e){ toast(e.message || "删除失败"); }
+}
+async function setCabSize(size){
+  try{
+    state = await api("PATCH","/api/cabinets/"+currentCab,{size, who});
+    render(); toast(size === "half" ? "已改成小柜子（半格）" : "已改成大柜子");
+  }catch(e){ toast(e.message || "修改失败"); }
+}
+async function addCabinet(roomId){
+  try{
+    state = await api("POST","/api/cabinets",{roomId, name:"", who});
+    render(); toast("已加一个柜子，点开可以改名字");
+  }catch(e){ toast(e.message || "添加失败"); }
+}
+
+/* ---------- 物品库 ---------- */
+function openLib(){
+  renderLib();
+  el("mask").classList.add("on");
+  el("libSheet").classList.add("on");
+  el("libSheet").setAttribute("aria-hidden","false");
+}
+function closeLib(){
+  el("libSheet").classList.remove("on");
+  el("libSheet").setAttribute("aria-hidden","true");
+  el("mask").classList.remove("on");
+}
+function renderLib(){
+  const types = (state && state.types) || [];
+  el("libSub").textContent = types.length ? `共 ${types.length} 种基础物品，柜子里都从这儿选` : "还没有物品，先在下面加一个";
+  el("libList").innerHTML = types.length ? types.map(t=>`
+    <div class="lib-row">
+      <span class="cat" style="width:9px;height:9px;border-radius:50%;background:${catColor(t.category)};flex:0 0 auto"></span>
+      <div class="body" onclick="openTypeEdit(${t.id})">
+        <b>${esc(t.name)}</b>
+        <small>${esc(t.category)} · ${t.place ? "在 "+esc(t.place.label)+"（"+t.place.qty+" 件）" : "还没放进柜子"}</small>
+      </div>
+      <button class="mini-edit" onclick="openTypeEdit(${t.id})" title="改名/换分类">✎</button>
+      <button class="del" onclick="delType(${t.id})" title="删除">🗑</button>
+    </div>`).join("") : `<div class="empty-state"><span class="big">📦</span>物品库是空的</div>`;
+  renderCatChips();
+}
+/* 种类：点名字＝给新物品选种类，点 ✕＝删掉这个种类 */
+function renderCatChips(){
+  const list = cats();
+  if(!list.includes(libCat)) libCat = list[0];
+  el("catChips").innerHTML = list.map(c=>`
+    <div class="chip ${libCat===c?"on":""}">
+      <span onclick="pickLibCat('${esc(c)}')">${esc(c)}</span>
+      <i class="x" onclick="delCat('${esc(c)}', event)">✕</i>
+    </div>`).join("");
+}
+function pickLibCat(c){ libCat = c; renderCatChips(); }
+async function addType(){
+  const name = el("libName").value.trim();
+  if(!name){ toast("先填物品名称"); el("libName").focus(); return; }
+  try{
+    state = await api("POST","/api/types",{name, category: libCat, who});
+    el("libName").value = ""; render(); toast("已加入物品库");
+  }catch(e){ toast(e.message || "添加失败"); }
+}
+async function addCat(){
+  const name = el("newCatName").value.trim();
+  if(!name){ toast("先填种类名称"); el("newCatName").focus(); return; }
+  try{
+    state = await api("POST","/api/cats",{name, who});
+    el("newCatName").value = "";
+    libCat = name; render(); toast("已加种类「" + name + "」");
+  }catch(e){ toast(e.message || "添加失败"); }
+}
+async function delCat(name, ev){
+  if(ev) ev.stopPropagation();
+  const row = (state.cats || []).find(x=>x.name === name);
+  if(!row) return;
+  const used = (state.types || []).filter(t=>t.category === name).length;
+  if(used){ toast(`「${name}」里还有 ${used} 种物品，先把它们改成别的种类`); return; }
+  if(!confirm(`删掉种类「${name}」？`)) return;
+  try{
+    state = await api("DELETE","/api/cats/"+row.id+"?who="+encodeURIComponent(who||"家人"));
+    render(); toast("已删除");
+  }catch(e){ toast(e.message || "删除失败"); }
+}
+el("libAdd").onclick = addType;
+el("libName").addEventListener("keydown", e=>{ if(e.key==="Enter") addType(); });
+el("catAddBtn").onclick = addCat;
+el("newCatName").addEventListener("keydown", e=>{ if(e.key==="Enter") addCat(); });
+el("libBtn").onclick = openLib;
+
+/* ---------- 刷新 / 备份 ---------- */
+el("refreshBtn").onclick = async function(){
+  const b = el("refreshBtn"); if(b.disabled) return;
+  b.disabled = true;
+  try{
+    state = await api("GET","/api/state");
+    lastSig = JSON.stringify(state); lastSyncAt = Date.now();
+    render();
+    toast("已刷新 · " + new Date().toLocaleTimeString("zh-CN",{hour:"2-digit",minute:"2-digit"}));
+  }catch(e){ toast("刷新失败，检查下网络"); }
+  finally{ b.disabled = false; }
+};
+
+async function exportData(){
+  try{
+    const d = await api("GET","/api/export");
+    const blob = new Blob([JSON.stringify(d, null, 2)], {type:"application/json"});
+    const a = document.createElement("a");
+    const stamp = new Date().toISOString().slice(0,10);
+    a.href = URL.createObjectURL(blob);
+    a.download = `柜子备份-${stamp}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 3000);
+    toast("备份已导出");
+  }catch(e){ toast(e.message || "导出失败"); }
+}
+el("importFile").addEventListener("change", async e=>{
+  const f = e.target.files && e.target.files[0];
+  if(!f) return;
+  if(!confirm("导入会覆盖现在所有数据，确定吗？")){ e.target.value=""; return; }
+  try{
+    const text = await f.text();
+    const payload = JSON.parse(text);
+    state = await api("POST","/api/import", payload.data ? payload : {data: payload});
+    render(); toast("已恢复备份");
+  }catch(err){ toast("这个文件读不出来" + (err && err.message ? "：" + err.message : "")); }
+  e.target.value = "";
+});
+el("libClose").onclick = closeLib;
+
+async function editType(id){
+  openTypeEdit(id);
+}
+async function delType(id){
+  const t = state.types.find(x=>x.id===id); if(!t) return;
+  try{
+    state = await api("DELETE","/api/types/"+id+"?who="+encodeURIComponent(who||"家人"));
+    render();
+    toast(t.used ? `「${t.name}」已删除，柜子里的也一并取出` : "已删除");
+  }catch(e){ toast(e.message || "删除失败"); }
+}
+
+/* ---------- 全部物品（点顶上的总数进来） ---------- */
+function openAll(){
+  renderAll();
+  el("mask").classList.add("on");
+  el("allSheet").classList.add("on");
+  el("allSheet").setAttribute("aria-hidden","false");
+}
+function closeAll(){
+  el("allSheet").classList.remove("on");
+  el("allSheet").setAttribute("aria-hidden","true");
+  el("mask").classList.remove("on");
+}
+function jumpCab(id){ closeAll(); setTimeout(()=>openCab(id), 60); }
+function renderAll(){
+  if(!state) return;
+  const q = (el("allQ").value || "").trim().toLowerCase();
+  let parts = [], total = 0, kinds = 0;
+  state.rooms.forEach(r=>{
+    r.cabinets.forEach(c=>{
+      const items = (c.items||[]).filter(i=> !q ||
+        [i.name, i.category, i.note, c.code, c.name, r.name].join(" ").toLowerCase().includes(q));
+      if(!items.length) return;
+      const sum = items.reduce((s,i)=>s+i.qty, 0);
+      total += sum; kinds += items.length;
+      parts.push(`<div class="all-group">
+        <div class="all-ghead" onclick="jumpCab(${c.id})">
+          <b>${esc(r.name)} ${esc(c.code)}</b>${c.name?`<span>${esc(c.name)}</span>`:""}
+          <span class="cnt">${sum} 件 ›</span>
+        </div>
+        ${items.map(i=>`<div class="all-row">
+          <span class="catdot" style="background:${catColor(i.category)}"></span>
+          <div class="body" onclick="openItemEdit(${i.id})"><b>${esc(i.name)}</b>
+            <small>${esc(i.category)}${i.note?" · "+esc(i.note):""}</small></div>
+          <div class="qty">
+            <button onclick="bumpQty(${i.id},-1)">−</button>
+            <span>${i.qty}</span>
+            <button onclick="bumpQty(${i.id},1)">＋</button>
+          </div>
+          <button class="mini-edit" onclick="openItemEdit(${i.id})" title="改名字/数量/备注">✎</button>
+          <button class="del" onclick="removeItem(${i.id})" title="取出">✕</button>
+        </div>`).join("")}
+      </div>`);
+    });
+  });
+  el("allSub").textContent = q
+    ? `筛出 ${kinds} 种 · 共 ${total} 件`
+    : `共 ${kinds} 种 · ${total} 件，点名字就能直接改`;
+  el("allList").innerHTML = parts.length ? parts.join("")
+    : `<div class="empty-state"><span class="big">🔍</span>没有找到对应的东西</div>`;
+}
+el("allClose").onclick = closeAll;
+el("allQ").addEventListener("input", renderAll);
+
+/* ---------- 搜索 ---------- */
+let searchTimer = null;
+el("q").addEventListener("input", e=>{
+  const q = e.target.value.trim();
+  el("qClear").classList.toggle("on", !!q);
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(()=>doSearch(q), 180);
+});
+el("qClear").onclick = ()=>{ el("q").value=""; el("qClear").classList.remove("on"); doSearch(""); };
+
+async function doSearch(q){
+  const box = el("results");
+  if(!q){ box.classList.remove("on"); box.innerHTML=""; return; }
+  let rows = [];
+  try{ rows = (await api("GET","/api/search?q="+encodeURIComponent(q))).results; }catch(e){ rows=[]; }
+  box.classList.add("on");
+  box.innerHTML = rows.length ? rows.map(r=>`
+    <button class="res-card" onclick="openCab(${r.cabinet_id})">
+      <span class="res-loc">${esc(r.room_name)} ${esc(r.code)}</span>
+      <div class="res-main"><b>${esc(r.name)}</b><small>${esc(r.category)}${r.note?" · "+esc(r.note):""}</small></div>
+      <span class="res-qty">×${r.qty}</span>
+    </button>`).join("") : `<div class="empty-state"><span class="big">🔍</span>没找到「${esc(q)}」，换个词试试</div>`;
+}
+
+/* ---------- 我是谁 ---------- */
+function askWho(){
+  el("whoInput").value = who || "";
+  el("whoMask").classList.add("on");
+  setTimeout(()=>el("whoInput").focus(), 120);
+}
+el("whoBtn").onclick = askWho;
+el("whoCancel").onclick = ()=>el("whoMask").classList.remove("on");
+el("whoSave").onclick = ()=>{
+  const v = el("whoInput").value.trim().slice(0,10);
+  who = v; localStorage.setItem("storage_who", v);
+  el("whoMask").classList.remove("on");
+  el("whoName").textContent = v || "家人";
+  toast(v ? "好，用「"+v+"」这个名字" : "先用「家人」");
+};
+el("whoInput").addEventListener("keydown", e=>{ if(e.key==="Enter") el("whoSave").click(); });
+
+/* ---------- 启动 ---------- */
+load();
+/* 不再每次都弹「你是谁」：想留名字点右上角就好 */
+
+/* 不做定时自动刷新：只在操作后更新；切回页面/重新聚焦时静默对一次数据 */
+async function syncQuiet(){
+  if(document.hidden) return;
+  if(Date.now() - lastSyncAt < 4000) return;          /* 防抖，避免来回切就狂请求 */
+  const ae = document.activeElement;
+  if(ae && ["INPUT","SELECT","TEXTAREA"].includes(ae.tagName)) return;  /* 正在输入就别打断 */
+  lastSyncAt = Date.now();
+  try{
+    const next = await api("GET","/api/state");
+    const sig = JSON.stringify(next);
+    if(sig === lastSig) return;                      /* 数据没变，不重绘、不跳动 */
+    lastSig = sig;
+    state = next;
+    render();
+  }catch(e){}
+}
+document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) syncQuiet(); });
+window.addEventListener("focus", syncQuiet);
+</script>
+</body>
+</html>

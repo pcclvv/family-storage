@@ -245,12 +245,21 @@ def log(c, who, action, detail):
               (who or "家人", action, detail, now_str()))
 
 
+def _cab_sort_key(code):
+    """柜子编号自然排序：字母前缀 + 数字大小（A1 A2 … A10 在 A2 后面）"""
+    cd = (code or "").strip()
+    m = re.match(r"^([A-Za-z]+)(\d+)$", cd)
+    if m:
+        return (0, m.group(1).upper(), int(m.group(2)), cd)
+    return (1, cd.upper(), 0, cd)
+
+
 def get_state():
     c = conn()
     rooms = [dict(r) for r in c.execute("SELECT * FROM rooms ORDER BY sort, id")]
-    # 柜子按编号自然排序（A1、A2…B1、B2…B10），改名/删了再补也归位
-    cabs = [dict(r) for r in c.execute(
-        "SELECT * FROM cabinets ORDER BY room_id, LENGTH(code), code, id")]
+    # 柜子按编号自然排序（字母前缀 + 数字），改名/删了再补也归位
+    cabs = [dict(r) for r in c.execute("SELECT * FROM cabinets ORDER BY room_id, id")]
+    cabs.sort(key=lambda r: (_cab_sort_key(r["code"]), r["id"]))
     items = [dict(r) for r in c.execute(
         "SELECT i.*, t.name AS tname, t.category AS tcat FROM items i "
         "LEFT JOIN types t ON t.id=i.type_id ORDER BY i.id DESC")]
@@ -707,15 +716,24 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(404, {"error": "房间不存在"})
             idx = c.execute("SELECT COUNT(*) n FROM rooms WHERE sort<? OR (sort=? AND id<=?)",
                             (room["sort"], room["sort"], room_id)).fetchone()["n"] - 1
-            prefix = ROOM_PREFIX[idx] if 0 <= idx < len(ROOM_PREFIX) else str(idx + 1)
+            # 编号跟着这个房间现有的柜子走（B1、B2…就接着出 B5），而不是固定按房间顺序
             codes = [r["code"] for r in c.execute("SELECT code FROM cabinets WHERE room_id=?", (room_id,))]
-            nums = []
+            groups = {}
             for cd in codes:
-                m = re.match(r"^%s(\d+)$" % re.escape(prefix), cd)
+                m = re.match(r"^([A-Za-z]+)(\d+)$", (cd or "").strip())
                 if m:
-                    nums.append(int(m.group(1)))
+                    groups.setdefault(m.group(1).upper(), []).append(int(m.group(2)))
+            if groups:
+                prefix = max(groups, key=lambda p: (len(groups[p]), p))
+                nums = groups[prefix]
+            else:
+                prefix = ROOM_PREFIX[idx] if 0 <= idx < len(ROOM_PREFIX) else str(idx + 1)
+                nums = []
             nxt = (max(nums) + 1) if nums else 1
             code = "%s%d" % (prefix, nxt)
+            while c.execute("SELECT id FROM cabinets WHERE code=?", (code,)).fetchone():
+                nxt += 1
+                code = "%s%d" % (prefix, nxt)
             name = (b.get("name") or "").strip()[:20]
             size = "half" if b.get("size") == "half" else "full"
             c.execute("INSERT INTO cabinets(room_id, code, name, size, sort) VALUES(?,?,?,?,?)",

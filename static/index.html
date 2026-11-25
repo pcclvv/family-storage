@@ -141,15 +141,16 @@ header.top{
 .room-add:active{transform:scale(.96)}
 
 /* 不管几个柜子，都排两行：列数 = 柜子数/2 向上取整；宽度自动均分 */
-.cabs{display:grid;gap:13px;grid-template-columns:repeat(var(--u,10),minmax(0,1fr))}
-.cab{grid-column:span 2}
-.cab.half{grid-column:span 1}
+.cabs{display:flex;flex-direction:column;gap:13px}
+.cab-row{display:flex;gap:13px;align-items:stretch}
+.cab{flex:2 1 0%;min-width:0}
+.cab.half{flex:1 1 0%}
 .cabs.dense{gap:10px}
 .cabs.dense .cab-head{padding:8px 8px 0;gap:4px}
 .cabs.dense .cab-body{height:100px;margin:7px 8px 0}
 .cabs.dense .cab-foot{padding:8px 9px 9px;font-size:10.5px}
 .cabs.dense .ins-line{font-size:10.5px;padding:2px 5px}
-@media (max-width:560px){.cabs{gap:11px}}
+@media (max-width:560px){.cabs{gap:11px}.cab-row{gap:11px}}
 
 /* ---------- 柜子卡片：木柜 + 半透明玻璃门 ---------- */
 .cab{
@@ -649,8 +650,9 @@ function render(){
 
   el("rooms").innerHTML = state.rooms.map(r=>{
     const n = r.cabinets.length;
-    const cols = Math.max(1, Math.ceil(n / 2));   /* 柜子分成两行，宽度自动均分 */
-    const cls = "cabs" + (cols >= 4 ? " dense" : "");
+    const rows = splitRows(r.cabinets);
+    const dense = Math.max(1, ...rows.map(x=>x.length)) >= 4;
+    const cls = "cabs" + (dense ? " dense" : "");
     return `
     <section class="room">
       <div class="room-head">
@@ -659,7 +661,8 @@ function render(){
         <span class="rule"></span>
         <button class="room-add" onclick="addCabinet(${r.id})">＋ 柜子</button>
       </div>
-      <div class="${cls}" style="--u:${cols*2}">${r.cabinets.map(c=>cabHTML(r,c)).join("")}</div>
+      <div class="${cls}">${rows.map(row=>row.length?
+        `<div class="cab-row">${row.map(c=>cabHTML(r,c)).join("")}</div>`:"").join("")}</div>
     </section>`;
   }).join("");
 
@@ -673,6 +676,27 @@ function render(){
   if(currentCab && el("sheet").classList.contains("on")) refreshSheet();
   if(el("libSheet").classList.contains("on")) renderLib();
   if(el("allSheet").classList.contains("on")) renderAll();
+}
+
+/* 柜子自动分两行：大柜占 2 份宽、小柜占 1 份，每行都铺满不留空；
+   按顺序找「两行总宽最接近」的切分点：4 个 → 2+2，5 个 → 2+3，6 个 → 3+3 */
+function splitRows(cabs){
+  const n = cabs.length;
+  if(n <= 2) return [cabs.slice(), []];
+  const w = c => c.size === "half" ? 1 : 2;
+  const total = cabs.reduce((s,c)=>s+w(c), 0);
+  let best = 1, bestDiff = Infinity, acc = 0;
+  const pre = [];
+  for(let i=0;i<n;i++){ acc += w(cabs[i]); pre.push(acc); }
+  for(let i=1;i<n;i++){
+    const d = Math.abs(pre[i-1]*2 - total);
+    if(d < bestDiff){ bestDiff = d; best = i; }
+  }
+  const r1 = cabs.slice(0, best), r2 = cabs.slice(best);
+  const loneHalf = row => row.length === 1 && row[0].size === "half";
+  if(loneHalf(r1) && r2.length){ r1.push(r2.shift()); }
+  else if(loneHalf(r2) && r1.length){ r1.push(r2.shift()); }
+  return [r1, r2];
 }
 
 /* 半透明柜门 + 柜内物品直接可读 */
