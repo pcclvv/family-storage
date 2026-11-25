@@ -143,8 +143,7 @@ header.top{
 /* 不管几个柜子，都排两行：列数 = 柜子数/2 向上取整；宽度自动均分 */
 .cabs{display:flex;flex-direction:column;gap:13px}
 .cab-row{display:flex;gap:13px;align-items:stretch}
-.cab{flex:2 1 0%;min-width:0}
-.cab.half{flex:1 1 0%}
+.cab{min-width:0;display:flex;flex-direction:column}
 .cabs.dense{gap:10px}
 .cabs.dense .cab-head{padding:8px 8px 0;gap:4px}
 .cabs.dense .cab-body{height:100px;margin:7px 8px 0}
@@ -249,15 +248,14 @@ header.top{
 .cab.half .cab-code{font-size:10px;padding:1px 5px;letter-spacing:.3px;border-radius:6px}
 .cab.half .cab-name{display:none}
 .cab.half .cab-count{display:none}
-.cab.half .cab-body{height:96px;margin:7px 8px 0}
+.cab.half .cab-body{margin:9px 8px 0}   /* 高度与大柜一致，继承 118px */
 .cab.half .cab-inside{inset:5px;padding:4px;gap:2px}
 .cab.half .ins-line{height:9px;padding:0;border-radius:3px;box-shadow:0 1px 1px rgba(0,0,0,.14)}
 .cab.half .ins-line b,.cab.half .ins-line em{display:none}
 .cab.half .ins-more{font-size:8px;text-align:center;padding-right:0}
 .cab.half .ins-empty{font-size:8.5px}
-.cab.half .cab-foot{padding:7px 6px 8px;font-size:9.5px;text-align:center}
+.cab.half .cab-foot{flex:1 0 auto;display:flex;align-items:center;justify-content:center;padding:7px 6px 8px;font-size:9.5px;text-align:center}
 .cab.half:hover .cab-door.single{transform:rotateY(-12deg)}
-.cabs.dense .cab.half .cab-body{height:84px}
 .cabs.dense .cab.half .cab-foot{font-size:9px;padding:6px 5px 7px}
 
 /* ---------- 搜索结果 ---------- */
@@ -651,6 +649,8 @@ function render(){
   el("rooms").innerHTML = state.rooms.map(r=>{
     const n = r.cabinets.length;
     const rows = splitRows(r.cabinets);
+    /* 每行至少容得下 2 个大柜（4 个半格）；大柜宽度固定，不再被小柜挤宽 */
+    const U = Math.max(4, ...rows.map(rw=>rw.reduce((s,c)=>s+(c.size==="half"?1:2),0)));
     const dense = Math.max(1, ...rows.map(x=>x.length)) >= 4;
     const cls = "cabs" + (dense ? " dense" : "");
     return `
@@ -662,7 +662,7 @@ function render(){
         <button class="room-add" onclick="addCabinet(${r.id})">＋ 柜子</button>
       </div>
       <div class="${cls}">${rows.map(row=>row.length?
-        `<div class="cab-row">${row.map(c=>cabHTML(r,c)).join("")}</div>`:"").join("")}</div>
+        `<div class="cab-row">${row.map(c=>cabHTML(r,c,U)).join("")}</div>`:"").join("")}</div>
     </section>`;
   }).join("");
 
@@ -678,32 +678,36 @@ function render(){
   if(el("allSheet").classList.contains("on")) renderAll();
 }
 
-/* 柜子自动分两行：大柜占 2 份宽、小柜占 1 份，每行都铺满不留空；
-   按顺序找「两行总宽最接近」的切分点：4 个 → 2+2，5 个 → 2+3，6 个 → 3+3 */
+/* 柜子自动分两行：按顺序找两行总宽最接近的切分点，两行都至少 2 个柜子；
+   ≤3 个柜子时排一行。宽度不在这里定，由 U（每行半格数）统一算 */
 function splitRows(cabs){
   const n = cabs.length;
-  if(n <= 2) return [cabs.slice(), []];
+  if(n <= 3) return [cabs.slice(), []];
   const w = c => c.size === "half" ? 1 : 2;
   const total = cabs.reduce((s,c)=>s+w(c), 0);
-  let best = 1, bestDiff = Infinity, acc = 0;
-  const pre = [];
+  let acc = 0; const pre = [];
   for(let i=0;i<n;i++){ acc += w(cabs[i]); pre.push(acc); }
-  for(let i=1;i<n;i++){
+  let best = 0, bestD = Infinity;
+  for(let i=2;i<=n-2;i++){          /* 两行都至少 2 个柜子，避免孤行拉伸 */
     const d = Math.abs(pre[i-1]*2 - total);
-    if(d < bestDiff){ bestDiff = d; best = i; }
+    if(d < bestD){ bestD = d; best = i; }
   }
-  const r1 = cabs.slice(0, best), r2 = cabs.slice(best);
-  const loneHalf = row => row.length === 1 && row[0].size === "half";
-  if(loneHalf(r1) && r2.length){ r1.push(r2.shift()); }
-  else if(loneHalf(r2) && r1.length){ r1.push(r2.shift()); }
+  if(!best) return [cabs.slice(), []];
+  let r1 = cabs.slice(0, best), r2 = cabs.slice(best);
+  const allHalf = r => r.every(c=>c.size==="half");
+  if(allHalf(r1) && r2.some(c=>c.size!=="half")){ r1.push(r2.shift()); r2.unshift(r1.shift()); }
+  else if(allHalf(r2) && r1.some(c=>c.size!=="half")){ r2.push(r1.shift()); r1.unshift(r2.shift()); }
   return [r1, r2];
 }
 
 /* 半透明柜门 + 柜内物品直接可读 */
-function cabHTML(room, cab){
+function cabHTML(room, cab, U){
   const items = cab.items || [];
   const isHalf = cab.size === "half";
-  const maxShown = isHalf ? 5 : 4;
+  /* 宽度固定：大柜 = 2/U，小柜 = 1/U（大柜的一半），不再随同排柜子拉伸 */
+  const wu = isHalf ? 1 : 2;
+  const pct = (wu / U * 100).toFixed(3);
+  const maxShown = isHalf ? 7 : 4;
   const shown = items.slice(0, maxShown);
   const inner = items.length
     ? shown.map(i=>`<div class="ins-line" style="background:${catColor(i.category)}E6">
@@ -719,7 +723,7 @@ function cabHTML(room, cab){
     ? `<div class="cab-door single"><i class="handle"></i></div>`
     : `<div class="cab-door left"><i class="handle"></i></div><div class="cab-door right"><i class="handle"></i></div>`;
   return `
-    <button class="cab ${isHalf?"half":""}" onclick="openCab(${cab.id})" data-cab="${cab.id}" title="${esc(cab.code)}${cab.name?" "+esc(cab.name):""}">
+    <button class="cab ${isHalf?"half":""}" style="flex:0 1 ${pct}%" onclick="openCab(${cab.id})" data-cab="${cab.id}" title="${esc(cab.code)}${cab.name?" "+esc(cab.name):""}">
       <div class="cab-head">
         <span class="cab-code">${esc(cab.code)}</span>
         ${cab.name?`<span class="cab-name">${esc(cab.name)}</span>`:""}
