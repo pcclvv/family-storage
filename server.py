@@ -83,6 +83,7 @@ def init_db():
           room_id INTEGER NOT NULL,
           code TEXT NOT NULL,
           name TEXT NOT NULL DEFAULT '',
+          size TEXT NOT NULL DEFAULT 'full',
           sort INTEGER NOT NULL DEFAULT 0
         );
         CREATE TABLE IF NOT EXISTS types (
@@ -129,6 +130,9 @@ def init_db():
 
 def migrate(c):
     """旧版本（物品自带名称）升级为「物品基础库 + 柜内引用」"""
+    cb_cols = [r["name"] for r in c.execute("PRAGMA table_info(cabinets)")]
+    if "size" not in cb_cols:                       # 柜子大小：full 占一格 / half 占半格
+        c.execute("ALTER TABLE cabinets ADD COLUMN size TEXT NOT NULL DEFAULT 'full'")
     cols = [r["name"] for r in c.execute("PRAGMA table_info(items)")]
     if "type_id" not in cols:
         c.execute("ALTER TABLE items ADD COLUMN type_id INTEGER NOT NULL DEFAULT 0")
@@ -256,7 +260,7 @@ def get_state():
 
 TABLE_COLS = {
     "rooms": {"id", "name", "sort"},
-    "cabinets": {"id", "room_id", "code", "name", "sort"},
+    "cabinets": {"id", "room_id", "code", "name", "size", "sort"},
     "types": {"id", "name", "category", "sort"},
     "cats": {"id", "name", "sort"},
     "items": {"id", "cabinet_id", "type_id", "name", "category", "qty", "note", "who",
@@ -662,8 +666,9 @@ class Handler(BaseHTTPRequestHandler):
             nxt = (max(nums) + 1) if nums else 1
             code = "%s%d" % (prefix, nxt)
             name = (b.get("name") or "").strip()[:20]
-            c.execute("INSERT INTO cabinets(room_id, code, name, sort) VALUES(?,?,?,?)",
-                      (room_id, code, name, nxt))
+            size = "half" if b.get("size") == "half" else "full"
+            c.execute("INSERT INTO cabinets(room_id, code, name, size, sort) VALUES(?,?,?,?,?)",
+                      (room_id, code, name, size, nxt))
             log(c, who, "柜子", "%s 新增柜子 %s" % (room["name"], code))
             c.commit()
             c.close()
@@ -679,6 +684,9 @@ class Handler(BaseHTTPRequestHandler):
             code = b["code"].strip().upper()[:6]
             sets.append("code=?")
             args.append(code)
+        if "size" in b:
+            sets.append("size=?")
+            args.append("half" if b.get("size") == "half" else "full")
         if not sets:
             return self._send(400, {"error": "没有要修改的内容"})
         with _db_lock:

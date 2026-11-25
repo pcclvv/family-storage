@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#F5F1E8">
-<title>家里的柜子 · 家庭储物管家</title>
+<title>展展家里的柜子 · 家庭储物管家</title>
 <style>
 :root{
   --bg:#F5F1E8;
@@ -73,7 +73,9 @@ header.top{
 .who-chip{display:inline-flex;align-items:center;gap:7px;padding:8px 13px;border-radius:999px;font-size:13px;
   background:var(--surface);border:1px solid var(--line);color:var(--muted);box-shadow:var(--shadow-sm)}
 .who-chip b{color:var(--ink);font-weight:600}
+.who-chip{white-space:nowrap}
 @media (max-width:600px){
+  .brand h1{font-size:15.5px;white-space:nowrap}
   .brand p{display:none}
   .top-btn .t{display:none}
   .top-btn{padding:9px 11px}
@@ -81,17 +83,17 @@ header.top{
 }
 
 /* ---------- 概览 ---------- */
-.overview{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:20px 0 8px}
-.stat{background:var(--surface);border:1px solid var(--line);border-radius:16px;
-  padding:13px 14px;box-shadow:var(--shadow-sm)}
-.stat span{display:block;font-size:11.5px;color:var(--muted);letter-spacing:.4px}
-.stat b{display:block;font-size:22px;font-weight:650;margin-top:3px;letter-spacing:.3px}
-.stat b i{font-size:12px;font-style:normal;color:var(--muted);font-weight:500;margin-left:3px}
-.stat.link{cursor:pointer;transition:.16s;position:relative;padding-right:26px}
+.overview{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:12px 0 2px;max-width:330px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:13px;
+  padding:8px 11px;box-shadow:var(--shadow-sm)}
+.stat span{display:block;font-size:10.5px;color:var(--muted);letter-spacing:.3px}
+.stat b{display:block;font-size:18px;font-weight:650;margin-top:1px;letter-spacing:.2px}
+.stat b i{font-size:11px;font-style:normal;color:var(--muted);font-weight:500;margin-left:2px}
+.stat.link{cursor:pointer;transition:.16s;position:relative;padding-right:20px}
 .stat.link:active{transform:scale(.985)}
-.stat.link::after{content:"›";position:absolute;right:11px;top:50%;transform:translateY(-50%);
-  color:#CDBFA9;font-size:17px;line-height:1;font-weight:400}
-.stat.link .tap{display:block;margin-top:5px;font-size:10px;color:#A99C88;font-style:normal;letter-spacing:.2px}
+.stat.link::after{content:"›";position:absolute;right:8px;top:50%;transform:translateY(-50%);
+  color:#CDBFA9;font-size:15px;line-height:1;font-weight:400}
+.stat.link .tap{display:block;margin-top:2px;font-size:9px;color:#A99C88;font-style:normal;letter-spacing:.2px}
 
 /* ---------- 全部物品明细 ---------- */
 .all-group{margin-bottom:13px}
@@ -129,8 +131,8 @@ header.top{
 .search-clear.on{display:grid}
 
 /* ---------- 房间 ---------- */
-.room{margin-top:26px}
-.room-head{display:flex;align-items:center;gap:10px;margin:0 2px 12px}
+.room{margin-top:17px}
+.room-head{display:flex;align-items:center;gap:10px;margin:0 2px 10px}
 .room-head h2{margin:0;font-size:16.5px;font-weight:650;letter-spacing:.3px}
 .room-head .meta{font-size:12px;color:var(--muted)}
 .room-head .rule{flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
@@ -138,9 +140,16 @@ header.top{
   border-radius:999px;padding:5px 10px;white-space:nowrap}
 .room-add:active{transform:scale(.96)}
 
-.cabs{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
-@media (max-width:900px){.cabs{grid-template-columns:repeat(3,1fr);gap:12px}}
-@media (max-width:560px){.cabs{grid-template-columns:repeat(2,1fr);gap:11px}}
+/* 不管几个柜子，都排两行：列数 = 柜子数/2 向上取整；宽度自动均分 */
+.cabs{display:grid;gap:13px;grid-template-columns:repeat(var(--u,10),minmax(0,1fr))}
+.cab{grid-column:span 2}
+.cab.half{grid-column:span 1}
+.cabs.dense{gap:10px}
+.cabs.dense .cab-head{padding:8px 8px 0;gap:4px}
+.cabs.dense .cab-body{height:100px;margin:7px 8px 0}
+.cabs.dense .cab-foot{padding:8px 9px 9px;font-size:10.5px}
+.cabs.dense .ins-line{font-size:10.5px;padding:2px 5px}
+@media (max-width:560px){.cabs{gap:11px}}
 
 /* ---------- 柜子卡片：半透明玻璃门 ---------- */
 .cab{
@@ -149,6 +158,10 @@ header.top{
   border:1px solid #E8DECB;box-shadow:var(--shadow-sm);
   overflow:hidden;transition:transform .18s ease, box-shadow .22s ease, border-color .2s;
 }
+.cab.half .cab-code{font-size:10.5px;padding:2px 6px}
+.cab.half .cab-name{display:none}
+.cab.half .ins-line b{max-width:100%}
+.cab.half .cab-foot{font-size:10.5px}
 .cab:hover{transform:translateY(-3px);box-shadow:var(--shadow-md);border-color:#DFD2BA}
 .cab:active{transform:scale(.985)}
 .cab-head{display:flex;align-items:center;gap:6px;padding:10px 11px 0}
@@ -364,7 +377,7 @@ header.top{
         <svg viewBox="0 0 24 24"><path d="M3.5 10.5 12 3.6l8.5 6.9"/><path d="M5.5 9.6V20h13V9.6"/><path d="M9.6 20v-5.4h4.8V20"/></svg>
       </div>
       <div>
-        <h1>家里的柜子</h1>
+        <h1>展展家里的柜子</h1>
         <p>被子床单，放哪儿一看就知道</p>
       </div>
     </div>
@@ -387,7 +400,6 @@ header.top{
 
   <div class="overview">
     <div class="stat link" id="stTotalCard" onclick="openAll()" role="button" tabindex="0"><span>物品总数</span><b id="stTotal">0<i>件</i></b><em class="tap">点开看明细 ›</em></div>
-    <div class="stat"><span>柜子</span><b id="stCabs">0<i>个</i></b></div>
     <div class="stat link" id="stTypesCard" onclick="openLib()" role="button" tabindex="0"><span>物品品类</span><b id="stTypes">0<i>种</i></b><em class="tap">点开物品库 ›</em></div>
   </div>
 
@@ -440,6 +452,14 @@ header.top{
         <button class="top-btn solid" onclick="saveCabCode()">保存</button>
       </div>
       <div class="form-tip" style="text-align:left;margin-top:8px">编号在整个家里不能重复</div>
+    </div>
+    <div class="setting-block">
+      <h4>柜子大小</h4>
+      <div class="form-row" style="margin-bottom:0">
+        <button class="top-btn" id="szFull" onclick="setCabSize('full')">大柜子</button>
+        <button class="top-btn" id="szHalf" onclick="setCabSize('half')">小柜子（半格）</button>
+      </div>
+      <div class="form-tip" style="text-align:left;margin-top:8px">小柜子只占半格宽，适合矮柜、鞋柜；柜子数量可以随时用房间右边的「＋ 柜子」加，在下面删</div>
     </div>
     <div class="setting-block">
       <h4>删掉这个柜子</h4>
@@ -590,22 +610,26 @@ async function load(){
 function render(){
   if(!state) return;
   el("whoName").textContent = who || "家人";
-  let total = 0, cabs = 0;
-  state.rooms.forEach(r=>{ total += r.count; cabs += r.cabinets.length; });
+  let total = 0;
+  state.rooms.forEach(r=>{ total += r.count; });
   el("stTotal").innerHTML = total + "<i>件</i>";
-  el("stCabs").innerHTML = cabs + "<i>个</i>";
   el("stTypes").innerHTML = (state.types || []).length + "<i>种</i>";
 
-  el("rooms").innerHTML = state.rooms.map(r=>`
+  el("rooms").innerHTML = state.rooms.map(r=>{
+    const n = r.cabinets.length;
+    const cols = Math.max(1, Math.ceil(n / 2));   /* 柜子分成两行，宽度自动均分 */
+    const cls = "cabs" + (cols >= 4 ? " dense" : "");
+    return `
     <section class="room">
       <div class="room-head">
         <h2>${esc(r.name)}</h2>
-        <span class="meta">${r.cabinets.length} 个柜子 · ${r.count} 件</span>
+        <span class="meta">${n} 个柜子 · ${r.count} 件</span>
         <span class="rule"></span>
         <button class="room-add" onclick="addCabinet(${r.id})">＋ 柜子</button>
       </div>
-      <div class="cabs">${r.cabinets.map(c=>cabHTML(r,c)).join("")}</div>
-    </section>`).join("");
+      <div class="${cls}" style="--u:${cols*2}">${r.cabinets.map(c=>cabHTML(r,c)).join("")}</div>
+    </section>`;
+  }).join("");
 
   el("logs").innerHTML = state.logs.length ? state.logs.map(l=>`
     <div class="log-row">
@@ -632,7 +656,7 @@ function cabHTML(room, cab){
     ? `<b>${cab.count}</b> 件 · ${items.map(i=>esc(i.name)).slice(0,4).join("、")}${items.length>4?"…":""}`
     : `<span class="empty">还没有东西，点开可以放</span>`;
   return `
-    <button class="cab" onclick="openCab(${cab.id})" data-cab="${cab.id}">
+    <button class="cab ${cab.size==="half"?"half":""}" onclick="openCab(${cab.id})" data-cab="${cab.id}" title="${esc(cab.code)}${cab.name?" "+esc(cab.name):""}">
       <div class="cab-head">
         <span class="cab-code">${esc(cab.code)}</span>
         ${cab.name?`<span class="cab-name">${esc(cab.name)}</span>`:""}
@@ -699,6 +723,8 @@ function refreshSheet(){
   el("shCode").textContent = cab.code;
   el("shTitle").textContent = (cab.name ? cab.name + " · " : "") + room.name;
   el("shSub").textContent = cab.items.length ? `里面 ${cab.items.length} 种 · 共 ${cab.count} 件` : "还是空的，先放点东西进去";
+  el("szFull").className = "top-btn" + (cab.size === "half" ? "" : " solid");
+  el("szHalf").className = "top-btn" + (cab.size === "half" ? " solid" : "");
   el("shItems").innerHTML = cab.items.length ? cab.items.map(i=>`
     <div class="item">
       <span class="cat" style="background:${catColor(i.category)}"></span>
@@ -868,6 +894,12 @@ async function deleteCab(){
     state = await api("DELETE","/api/cabinets/"+currentCab+"?who="+encodeURIComponent(who||"家人"));
     closeSheet(); render(); toast("柜子已删除");
   }catch(e){ toast(e.message || "删除失败"); }
+}
+async function setCabSize(size){
+  try{
+    state = await api("PATCH","/api/cabinets/"+currentCab,{size, who});
+    render(); toast(size === "half" ? "已改成小柜子（半格）" : "已改成大柜子");
+  }catch(e){ toast(e.message || "修改失败"); }
 }
 async function addCabinet(roomId){
   try{
