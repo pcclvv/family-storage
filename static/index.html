@@ -91,7 +91,7 @@ header.top{
 .stat.link:active{transform:scale(.985)}
 .stat.link::after{content:"›";position:absolute;right:11px;top:50%;transform:translateY(-50%);
   color:#CDBFA9;font-size:17px;line-height:1;font-weight:400}
-.stat.link .hint{position:absolute;left:14px;bottom:9px;font-size:10px;color:#B4A794;display:none}
+.stat.link .tap{display:block;margin-top:5px;font-size:10px;color:#A99C88;font-style:normal;letter-spacing:.2px}
 
 /* ---------- 全部物品明细 ---------- */
 .all-group{margin-bottom:13px}
@@ -371,9 +371,9 @@ header.top{
 
 <div class="wrap">
   <div class="overview">
-    <div class="stat link" id="stTotalCard" onclick="openAll()"><span>物品总数</span><b id="stTotal">0<i>件</i></b></div>
+    <div class="stat link" id="stTotalCard" onclick="openAll()" role="button" tabindex="0"><span>物品总数</span><b id="stTotal">0<i>件</i></b><em class="tap">点开看明细 ›</em></div>
     <div class="stat"><span>柜子</span><b id="stCabs">0<i>个</i></b></div>
-    <div class="stat link" id="stTypesCard" onclick="openLib()"><span>物品品类</span><b id="stTypes">0<i>种</i></b></div>
+    <div class="stat link" id="stTypesCard" onclick="openLib()" role="button" tabindex="0"><span>物品品类</span><b id="stTypes">0<i>种</i></b><em class="tap">点开物品库 ›</em></div>
   </div>
 
   <div class="searchbar">
