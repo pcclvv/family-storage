@@ -120,12 +120,33 @@ def init_db():
         """
     )
     migrate(c)
+    merge_duplicate_types(c)
     ensure_cats(c)
     c.execute("CREATE INDEX IF NOT EXISTS idx_items_type ON items(type_id)")
     if fresh or c.execute("SELECT COUNT(*) n FROM rooms").fetchone()["n"] == 0:
         seed(c)
     c.commit()
     c.close()
+
+
+def merge_duplicate_types(c):
+    """一种物品只应该待在一个柜子里；历史上重复放到多个柜子的，合并成一条（数量相加）"""
+    rows = c.execute("SELECT type_id, COUNT(*) n FROM items WHERE type_id>0 "
+                     "GROUP BY type_id HAVING n>1").fetchall()
+    for row in rows:
+        items = c.execute(
+            "SELECT i.*, cb.code, r.name AS rn FROM items i "
+            "JOIN cabinets cb ON cb.id=i.cabinet_id JOIN rooms r ON r.id=cb.room_id "
+            "WHERE i.type_id=? ORDER BY i.id", (row["type_id"],)).fetchall()
+        keep = items[0]
+        total = min(999, sum(i["qty"] for i in items))
+        c.execute("UPDATE items SET qty=? WHERE id=?", (total, keep["id"]))
+        for it in items[1:]:
+            c.execute("DELETE FROM items WHERE id=?", (it["id"],))
+        log(c, "系统", "整理", "「%s」原来放在 %d 个柜子（%s），已合并到 %s %s，共 %d 件"
+            % (keep["name"], len(items),
+               "、".join("%s %s" % (i["rn"], i["code"]) for i in items),
+               keep["rn"], keep["code"], total))
 
 
 def migrate(c):
@@ -252,9 +273,17 @@ def get_state():
     for cab in cabs:
         cab["items"] = by_cab.get(cab["id"], [])
         cab["count"] = sum(i["qty"] for i in cab["items"])
+    place = {}
     for room in rooms:
         room["cabinets"] = [x for x in cabs if x["room_id"] == room["id"]]
         room["count"] = sum(x["count"] for x in room["cabinets"])
+        for cab in room["cabinets"]:
+            for it in cab["items"]:
+                place[it["type_id"]] = {"room": room["name"], "code": cab["code"],
+                                        "cabinet_id": cab["id"], "qty": it["qty"],
+                                        "label": "%s %s" % (room["name"], cab["code"])}
+    for t in types:
+        t["place"] = place.get(t["id"])
     return {"rooms": rooms, "logs": logs, "types": types, "categories": cats, "cats": cats_rows}
 
 
@@ -464,12 +493,12 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(404, {"error": "物品不存在"})
             used = c.execute("SELECT COUNT(*) n, COALESCE(SUM(qty),0) q FROM items WHERE type_id=?",
                              (tid,)).fetchone()
-            if used["n"]:
-                c.close()
-                return self._send(400, {"error": "「%s」还在 %d 个柜子里，先把它从柜子里取出再删"
-                                        % (row["name"], used["n"])})
+            c.execute("DELETE FROM items WHERE type_id=?", (tid,))
             c.execute("DELETE FROM types WHERE id=?", (tid,))
-            log(c, who, "物品库", "删除物品「%s」" % row["name"])
+            detail = "删除物品「%s」" % row["name"]
+            if used["n"]:
+                detail += "，并从柜子里取出 %d 件" % used["q"]
+            log(c, who, "物品库", detail)
             c.commit()
             c.close()
         return self._send(200, get_state())
@@ -569,6 +598,16 @@ class Handler(BaseHTTPRequestHandler):
                     cat = b.get("category") if b.get("category") in CATEGORIES else "其他"
                     c.execute("INSERT INTO types(name, category, sort) VALUES(?,?,0)", (name, cat))
                     typ = c.execute("SELECT * FROM types WHERE id=last_insert_rowid()").fetchone()
+            # 一种物品只能待在一个柜子里：已经放在别处就不再重复放
+            other = c.execute(
+                "SELECT i.id, i.qty, cb.code, r.name AS rn FROM items i "
+                "JOIN cabinets cb ON cb.id=i.cabinet_id JOIN rooms r ON r.id=cb.room_id "
+                "WHERE i.type_id=? AND i.cabinet_id<>?", (typ["id"], cab_id)).fetchone()
+            if other:
+                c.close()
+                return self._send(409, {"error": "「%s」已经在 %s %s 里（%d 件）。一种物品只放一个柜子，"
+                                                 "想换地方先在原柜子里取出"
+                                                 % (typ["name"], other["rn"], other["code"], other["qty"])})
             exist = c.execute("SELECT * FROM items WHERE cabinet_id=? AND type_id=?",
                               (cab_id, typ["id"])).fetchone()
             if exist:
@@ -619,6 +658,16 @@ class Handler(BaseHTTPRequestHandler):
             if not row:
                 c.close()
                 return self._send(404, {"error": "柜子里没有这件物品"})
+            if "typeId" in b and args and args[0] != row["type_id"]:
+                other = c.execute(
+                    "SELECT i.qty, cb.code, r.name AS rn FROM items i "
+                    "JOIN cabinets cb ON cb.id=i.cabinet_id JOIN rooms r ON r.id=cb.room_id "
+                    "WHERE i.type_id=? AND i.id<>?", (args[0], item_id)).fetchone()
+                if other:
+                    c.close()
+                    return self._send(409, {"error": "「%s」已经在 %s %s 里（%d 件），一种物品只放一个柜子"
+                                                     % (row["tname"] or row["name"], other["rn"],
+                                                        other["code"], other["qty"])})
             c.execute("UPDATE items SET %s WHERE id=?" % ",".join(sets), args)
             log(c, who, "修改", "%s %s 的「%s」" % (row["rn"], row["code"], row["tname"] or row["name"]))
             c.commit()
@@ -716,12 +765,14 @@ class Handler(BaseHTTPRequestHandler):
             if not cab:
                 c.close()
                 return self._send(404, {"error": "柜子不存在"})
-            n = c.execute("SELECT COUNT(*) n FROM items WHERE cabinet_id=?", (cab_id,)).fetchone()["n"]
-            if n:
-                c.close()
-                return self._send(400, {"error": "柜子里还有 %d 种物品，先清空再删柜子" % n})
+            got = c.execute("SELECT COALESCE(SUM(qty),0) q, COUNT(*) n FROM items WHERE cabinet_id=?",
+                            (cab_id,)).fetchone()
+            c.execute("DELETE FROM items WHERE cabinet_id=?", (cab_id,))
             c.execute("DELETE FROM cabinets WHERE id=?", (cab_id,))
-            log(c, who, "柜子", "删除 %s %s 柜子" % (cab["rn"], cab["code"]))
+            detail = "删除 %s %s 柜子" % (cab["rn"], cab["code"])
+            if got["n"]:
+                detail += "，柜里 %d 种 %d 件一并取出" % (got["n"], got["q"])
+            log(c, who, "柜子", detail)
             c.commit()
             c.close()
         return self._send(200, get_state())

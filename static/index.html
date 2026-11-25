@@ -325,6 +325,8 @@ header.top{
 .chip[disabled]{cursor:default}
 .chips.wrap{flex-wrap:wrap;overflow:visible}
 .chip .x{font-style:normal;font-size:10px;opacity:.45;margin-left:5px}
+.chip.other{background:#F4EEE2;border-color:#E7DCC8;color:#9A8E7C;font-size:12px}
+.chip.other::after{content:" 📦";font-size:10px;opacity:.7}
 .field{flex:1;min-width:0;padding:12px 13px;border-radius:13px;font-size:14px;
   background:#fff;border:1px solid #E9E0CF;outline:none;transition:.18s}
 .field:focus{border-color:#C6DACE;box-shadow:0 0 0 3px rgba(94,139,122,.10)}
@@ -757,17 +759,32 @@ function renderTypeChips(){
   const hit = findCab(currentCab);
   const inCab = new Set(hit ? hit.cab.items.map(i=>i.type_id) : []);
   el("typeChips").innerHTML = types.map(t=>{
+    /* 已经在本柜：绿勾，点不动 */
     if(inCab.has(t.id)){
       return `<button class="chip used" disabled>${esc(t.name)} ✓</button>`;
     }
+    /* 已经在别的柜子：灰掉并写明位置，点了给提示 */
+    if(t.place){
+      return `<button class="chip used other" onclick="usedHint(${t.id})">${esc(t.name)} · 在${esc(t.place.code)}</button>`;
+    }
     return `<button class="chip" onclick="putItem(${t.id})">${esc(t.name)}</button>`;
   }).join("");
+}
+
+function usedHint(typeId){
+  const t = (state.types || []).find(x=>x.id===typeId);
+  if(!t || !t.place) return;
+  toast(`「${t.name}」已经在 ${t.place.label} 里（${t.place.qty} 件）。一件物品只能放一个柜子，想挪先在那里取出`);
 }
 
 /* 点一下＝直接放 1 件 */
 let putting = false;
 async function putItem(typeId){
   if(!currentCab || putting) return;
+  const t = (state.types || []).find(x=>x.id===typeId);
+  if(t && t.place && t.place.cabinet_id !== currentCab){
+    return usedHint(typeId);
+  }
   putting = true;
   try{
     state = await api("POST","/api/items",{cabinetId: currentCab, typeId, qty: 1, note: "", who});
@@ -889,10 +906,10 @@ async function saveCabCode(){
 }
 async function deleteCab(){
   const hit = findCab(currentCab); if(!hit) return;
-  if(!confirm(`确定删掉 ${hit.room.name} 的 ${hit.cab.code} 柜子吗？`)) return;
   try{
     state = await api("DELETE","/api/cabinets/"+currentCab+"?who="+encodeURIComponent(who||"家人"));
-    closeSheet(); render(); toast("柜子已删除");
+    closeSheet(); render();
+    toast(hit.cab.count ? `柜子已删除，里面 ${hit.cab.count} 件也一并取出` : "柜子已删除");
   }catch(e){ toast(e.message || "删除失败"); }
 }
 async function setCabSize(size){
@@ -928,7 +945,7 @@ function renderLib(){
       <span class="cat" style="width:9px;height:9px;border-radius:50%;background:${catColor(t.category)};flex:0 0 auto"></span>
       <div class="body" onclick="openTypeEdit(${t.id})">
         <b>${esc(t.name)}</b>
-        <small>${esc(t.category)} · ${t.used ? "在 "+t.used+" 个柜子里" : "还没放进柜子"}</small>
+        <small>${esc(t.category)} · ${t.place ? "在 "+esc(t.place.label)+"（"+t.place.qty+" 件）" : "还没放进柜子"}</small>
       </div>
       <button class="mini-edit" onclick="openTypeEdit(${t.id})" title="改名/换分类">✎</button>
       <button class="del" onclick="delType(${t.id})" title="删除">🗑</button>
@@ -1025,11 +1042,10 @@ async function editType(id){
 }
 async function delType(id){
   const t = state.types.find(x=>x.id===id); if(!t) return;
-  if(t.used){ toast(`「${t.name}」还在 ${t.used} 个柜子里，先取出再删`); return; }
-  if(!confirm(`从物品库删掉「${t.name}」？`)) return;
   try{
     state = await api("DELETE","/api/types/"+id+"?who="+encodeURIComponent(who||"家人"));
-    render(); toast("已删除");
+    render();
+    toast(t.used ? `「${t.name}」已删除，柜子里的也一并取出` : "已删除");
   }catch(e){ toast(e.message || "删除失败"); }
 }
 
