@@ -151,32 +151,37 @@ header.top{
 .cabs.dense .ins-line{font-size:10.5px;padding:2px 5px}
 @media (max-width:560px){.cabs{gap:11px}}
 
-/* ---------- 柜子卡片：半透明玻璃门 ---------- */
+/* ---------- 柜子卡片：木柜 + 半透明玻璃门 ---------- */
 .cab{
-  position:relative;border-radius:18px;padding:0;text-align:left;
-  background:linear-gradient(180deg,#FBF7EF,#F6F0E3);
-  border:1px solid #E8DECB;box-shadow:var(--shadow-sm);
-  overflow:hidden;transition:transform .18s ease, box-shadow .22s ease, border-color .2s;
+  position:relative;border-radius:16px;padding:0;text-align:left;
+  background:linear-gradient(180deg,#FDFAF3,#F7F0E2);
+  border:1px solid #E6DCC8;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 1px 2px rgba(70,54,34,.05),0 6px 16px rgba(70,54,34,.06);
+  overflow:hidden;
+  transition:transform .2s ease,box-shadow .24s ease,border-color .2s;
 }
-.cab.half .cab-code{font-size:10.5px;padding:2px 6px}
-.cab.half .cab-name{display:none}
-.cab.half .ins-line b{max-width:100%}
-.cab.half .cab-foot{font-size:10.5px}
-.cab:hover{transform:translateY(-3px);box-shadow:var(--shadow-md);border-color:#DFD2BA}
+.cab:hover{transform:translateY(-3px);border-color:#DED0B6;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 12px 26px rgba(70,54,34,.13),0 3px 8px rgba(70,54,34,.07)}
 .cab:active{transform:scale(.985)}
 .cab-head{display:flex;align-items:center;gap:6px;padding:10px 11px 0}
-.cab-code{font-size:11.5px;font-weight:700;letter-spacing:.8px;color:#7A6A50;
-  background:#F1E6D2;border:1px solid #E4D6BC;border-radius:7px;padding:2px 7px}
+.cab-code{font-size:11.5px;font-weight:700;letter-spacing:.7px;color:#7A6A50;
+  background:linear-gradient(180deg,#F7EDDA,#EFE1C7);border:1px solid #E4D6BC;border-radius:7px;padding:2px 7px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.85)}
 .cab-name{font-size:11px;color:#9A8E7C;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cab-count{margin-left:auto;font-size:11px;color:#8A7E6B;background:rgba(255,255,255,.72);
-  border-radius:999px;padding:2px 7px;border:1px solid #EADFCC}
+.cab-count{margin-left:auto;font-size:11px;color:#8A7E6B;background:rgba(255,255,255,.75);
+  border-radius:999px;padding:2px 7px;border:1px solid #EADFCC;white-space:nowrap}
 .cab-count.hot{background:var(--sage-soft);border-color:#CFE0D7;color:#3F6B5A;font-weight:600}
 
-.cab-body{position:relative;height:118px;margin:9px 11px 0;perspective:600px}
+.cab-body{position:relative;height:118px;margin:9px 11px 0;perspective:700px;
+  border-radius:9px;box-shadow:0 8px 14px -9px rgba(84,64,40,.45)}
 .cab-frame{
   position:absolute;inset:0;border-radius:9px;overflow:hidden;
   background:linear-gradient(160deg,var(--wood-1),var(--wood-2) 55%,var(--wood-3));
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.6), inset 0 -3px 8px rgba(120,92,55,.18);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.6),inset 0 -3px 8px rgba(120,92,55,.18);
+}
+.cab-frame::before{ /* 顶板高光 */
+  content:"";position:absolute;left:0;right:0;top:0;height:6px;z-index:1;
+  background:linear-gradient(180deg,rgba(255,255,255,.55),rgba(255,255,255,0));
 }
 .cab-frame::after{
   content:"";position:absolute;inset:0;opacity:.24;
@@ -197,39 +202,62 @@ header.top{
 .ins-line em{font-style:normal;opacity:.62;font-size:8.5px;margin-left:auto;padding-left:3px}
 .ins-more{font-size:8.5px;color:rgba(255,255,255,.62);text-align:right;padding-right:2px}
 .ins-empty{font-size:9.5px;color:rgba(255,246,230,.66);text-align:center;margin:auto}
+.cab:hover .ins-line{filter:saturate(106%) brightness(1.03)}
 
 /* 半透明柜门：透过门能看清里面的东西 */
 .cab-door{
   position:absolute;top:0;bottom:0;width:50%;z-index:2;
-  background:linear-gradient(155deg,rgba(255,253,247,.30),rgba(235,224,203,.18) 60%,rgba(214,197,168,.24));
-  border:1px solid rgba(255,255,255,.45);
-  box-shadow:inset 0 0 10px rgba(255,255,255,.22), 0 1px 3px rgba(120,92,55,.10);
-  backdrop-filter:blur(.5px) saturate(108%);
-  -webkit-backdrop-filter:blur(.5px) saturate(108%);
-  transition:transform .45s cubic-bezier(.2,.8,.2,1), background .3s;
+  background:linear-gradient(150deg,rgba(255,253,248,.32),rgba(233,221,199,.18) 58%,rgba(208,190,160,.26));
+  border:1px solid rgba(255,255,255,.5);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.62),inset 0 0 12px rgba(255,255,255,.22),0 1px 4px rgba(110,86,54,.12);
+  backdrop-filter:blur(1px) saturate(110%);
+  -webkit-backdrop-filter:blur(1px) saturate(110%);
+  transition:transform .5s cubic-bezier(.2,.85,.2,1),box-shadow .3s,background .3s;
   overflow:hidden;
 }
 .cab-door::before{ /* 玻璃斜向高光 */
   content:"";position:absolute;inset:0;
-  background:linear-gradient(115deg,rgba(255,255,255,.28) 0%,rgba(255,255,255,.04) 38%,rgba(255,255,255,0) 52%,rgba(255,255,255,.12) 100%);
+  background:linear-gradient(115deg,rgba(255,255,255,.30) 0%,rgba(255,255,255,.05) 36%,rgba(255,255,255,0) 52%,rgba(255,255,255,.13) 100%);
 }
 .cab-door::after{ /* 门框 */
-  content:"";position:absolute;inset:5px;border:1px solid rgba(255,255,255,.4);border-radius:3px;
+  content:"";position:absolute;inset:4px;border:1px solid rgba(255,255,255,.4);border-radius:4px;
 }
-.cab-door.left{left:0;transform-origin:left center;border-radius:9px 2px 2px 9px}
-.cab-door.right{right:0;transform-origin:right center;border-radius:2px 9px 9px 2px}
-.cab:hover .cab-door.left{transform:rotateY(-18deg)}
-.cab:hover .cab-door.right{transform:rotateY(18deg)}
-.handle{position:absolute;top:50%;width:4px;height:22px;border-radius:3px;
-  background:linear-gradient(180deg,#E4C982,#C4A05A);
-  box-shadow:0 1px 2px rgba(120,90,40,.35);transform:translateY(-50%);z-index:3}
-.cab-door.left .handle{right:5px}
-.cab-door.right .handle{left:5px}
+.cab-door.left{left:0;transform-origin:left center;border-radius:9px 3px 3px 9px}
+.cab-door.right{right:0;transform-origin:right center;border-radius:3px 9px 9px 3px}
+/* 小柜子只有一张门：整扇，从左边开 */
+.cab-door.single{left:0;right:0;width:auto;transform-origin:left center;border-radius:9px}
+.cab:hover .cab-door.left{transform:rotateY(-17deg);box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 6px 16px rgba(90,70,42,.16)}
+.cab:hover .cab-door.right{transform:rotateY(17deg);box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 6px 16px rgba(90,70,42,.16)}
+.cab:hover .cab-door.single{transform:rotateY(-14deg);box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 8px 20px rgba(90,70,42,.18)}
+.handle{position:absolute;top:50%;width:4px;height:24px;border-radius:3px;
+  background:linear-gradient(180deg,#F1DCA8,#CBA65F 46%,#A98842);
+  box-shadow:0 1px 2px rgba(80,60,30,.4),inset 0 1px 0 rgba(255,255,255,.55);
+  transform:translateY(-50%);z-index:3}
+.cab-door.left .handle{right:6px}
+.cab-door.right .handle{left:6px}
+.cab-door.single .handle{right:7px;height:27px;width:5px}
 
 .cab-foot{padding:9px 11px 11px;font-size:11.5px;color:#8A7E6B;line-height:1.35;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cab-foot b{color:#5C4E3B;font-weight:650}
 .cab-foot .empty{color:#B4A794}
+
+/* 小柜子（半格）：窄柜，单门，内部只留彩色叠放条 */
+.cab.half{border-radius:14px}
+.cab.half .cab-head{padding:8px 8px 0;gap:4px}
+.cab.half .cab-code{font-size:10px;padding:1px 5px;letter-spacing:.3px;border-radius:6px}
+.cab.half .cab-name{display:none}
+.cab.half .cab-count{display:none}
+.cab.half .cab-body{height:96px;margin:7px 8px 0}
+.cab.half .cab-inside{inset:5px;padding:4px;gap:2px}
+.cab.half .ins-line{height:9px;padding:0;border-radius:3px;box-shadow:0 1px 1px rgba(0,0,0,.14)}
+.cab.half .ins-line b,.cab.half .ins-line em{display:none}
+.cab.half .ins-more{font-size:8px;text-align:center;padding-right:0}
+.cab.half .ins-empty{font-size:8.5px}
+.cab.half .cab-foot{padding:7px 6px 8px;font-size:9.5px;text-align:center}
+.cab.half:hover .cab-door.single{transform:rotateY(-12deg)}
+.cabs.dense .cab.half .cab-body{height:84px}
+.cabs.dense .cab.half .cab-foot{font-size:9px;padding:6px 5px 7px}
 
 /* ---------- 搜索结果 ---------- */
 .results{margin-top:18px;display:none}
@@ -599,9 +627,12 @@ async function api(method, path, body){
 }
 
 /* ---------- 加载与渲染 ---------- */
+let lastSyncAt = 0, lastSig = "";
 async function load(){
   try{
     state = await api("GET","/api/state");
+    lastSig = JSON.stringify(state);
+    lastSyncAt = Date.now();
     render();
   }catch(e){
     toast("连不上服务，请刷新页面");
@@ -647,17 +678,24 @@ function render(){
 /* 半透明柜门 + 柜内物品直接可读 */
 function cabHTML(room, cab){
   const items = cab.items || [];
-  const shown = items.slice(0, 4);
+  const isHalf = cab.size === "half";
+  const maxShown = isHalf ? 5 : 4;
+  const shown = items.slice(0, maxShown);
   const inner = items.length
     ? shown.map(i=>`<div class="ins-line" style="background:${catColor(i.category)}E6">
          <b>${esc(i.name)}</b><em>×${i.qty}</em></div>`).join("")
       + (items.length > shown.length ? `<div class="ins-more">还有 ${items.length-shown.length} 种…</div>` : "")
     : `<div class="ins-empty">空柜子</div>`;
-  const foot = items.length
-    ? `<b>${cab.count}</b> 件 · ${items.map(i=>esc(i.name)).slice(0,4).join("、")}${items.length>4?"…":""}`
-    : `<span class="empty">还没有东西，点开可以放</span>`;
+  const foot = isHalf
+    ? (items.length ? `<b>${cab.count}</b> 件` : `<span class="empty">空</span>`)
+    : (items.length
+        ? `<b>${cab.count}</b> 件 · ${items.map(i=>esc(i.name)).slice(0,4).join("、")}${items.length>4?"…":""}`
+        : `<span class="empty">还没有东西，点开可以放</span>`);
+  const doors = isHalf
+    ? `<div class="cab-door single"><i class="handle"></i></div>`
+    : `<div class="cab-door left"><i class="handle"></i></div><div class="cab-door right"><i class="handle"></i></div>`;
   return `
-    <button class="cab ${cab.size==="half"?"half":""}" onclick="openCab(${cab.id})" data-cab="${cab.id}" title="${esc(cab.code)}${cab.name?" "+esc(cab.name):""}">
+    <button class="cab ${isHalf?"half":""}" onclick="openCab(${cab.id})" data-cab="${cab.id}" title="${esc(cab.code)}${cab.name?" "+esc(cab.name):""}">
       <div class="cab-head">
         <span class="cab-code">${esc(cab.code)}</span>
         ${cab.name?`<span class="cab-name">${esc(cab.name)}</span>`:""}
@@ -665,8 +703,7 @@ function cabHTML(room, cab){
       </div>
       <div class="cab-body">
         <div class="cab-frame"><div class="cab-inside">${inner}</div></div>
-        <div class="cab-door left"><i class="handle"></i></div>
-        <div class="cab-door right"><i class="handle"></i></div>
+        ${doors}
       </div>
       <div class="cab-foot">${foot}</div>
     </button>`;
@@ -1003,6 +1040,7 @@ el("refreshBtn").onclick = async function(){
   b.disabled = true;
   try{
     state = await api("GET","/api/state");
+    lastSig = JSON.stringify(state); lastSyncAt = Date.now();
     render();
     toast("已刷新 · " + new Date().toLocaleTimeString("zh-CN",{hour:"2-digit",minute:"2-digit"}));
   }catch(e){ toast("刷新失败，检查下网络"); }
@@ -1146,13 +1184,24 @@ el("whoInput").addEventListener("keydown", e=>{ if(e.key==="Enter") el("whoSave"
 load();
 /* 不再每次都弹「你是谁」：想留名字点右上角就好 */
 
-/* 多人共用：每 20 秒静默同步 */
-setInterval(async ()=>{
+/* 不做定时自动刷新：只在操作后更新；切回页面/重新聚焦时静默对一次数据 */
+async function syncQuiet(){
   if(document.hidden) return;
-  const typing = document.activeElement && ["INPUT","SELECT","TEXTAREA"].includes(document.activeElement.tagName);
-  if(typing) return;
-  try{ state = await api("GET","/api/state"); render(); }catch(e){}
-}, 20000);
+  if(Date.now() - lastSyncAt < 4000) return;          /* 防抖，避免来回切就狂请求 */
+  const ae = document.activeElement;
+  if(ae && ["INPUT","SELECT","TEXTAREA"].includes(ae.tagName)) return;  /* 正在输入就别打断 */
+  lastSyncAt = Date.now();
+  try{
+    const next = await api("GET","/api/state");
+    const sig = JSON.stringify(next);
+    if(sig === lastSig) return;                      /* 数据没变，不重绘、不跳动 */
+    lastSig = sig;
+    state = next;
+    render();
+  }catch(e){}
+}
+document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) syncQuiet(); });
+window.addEventListener("focus", syncQuiet);
 </script>
 </body>
 </html>
