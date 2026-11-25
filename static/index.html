@@ -87,6 +87,26 @@ header.top{
 .stat span{display:block;font-size:11.5px;color:var(--muted);letter-spacing:.4px}
 .stat b{display:block;font-size:22px;font-weight:650;margin-top:3px;letter-spacing:.3px}
 .stat b i{font-size:12px;font-style:normal;color:var(--muted);font-weight:500;margin-left:3px}
+.stat.link{cursor:pointer;transition:.16s;position:relative;padding-right:26px}
+.stat.link:active{transform:scale(.985)}
+.stat.link::after{content:"›";position:absolute;right:11px;top:50%;transform:translateY(-50%);
+  color:#CDBFA9;font-size:17px;line-height:1;font-weight:400}
+.stat.link .hint{position:absolute;left:14px;bottom:9px;font-size:10px;color:#B4A794;display:none}
+
+/* ---------- 全部物品明细 ---------- */
+.all-group{margin-bottom:13px}
+.all-ghead{display:flex;align-items:center;gap:7px;font-size:11.5px;color:#8A7E6B;margin:0 2px 7px}
+.all-ghead b{font-size:11.5px;color:#3F6B5A;background:var(--sage-soft);border:1px solid #CFE0D7;
+  border-radius:7px;padding:2px 7px;letter-spacing:.4px;font-weight:700}
+.all-ghead .cnt{margin-left:auto;font-size:11px;color:#B4A894}
+.all-row{display:flex;align-items:center;gap:9px;padding:10px 11px;border-radius:13px;
+  background:#FBF7EF;border:1px solid #EFE7D8;margin-bottom:7px}
+.all-row .catdot{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
+.all-row .body{flex:1;min-width:0}
+.all-row .body b{font-size:13.5px;font-weight:600}
+.all-row .body small{display:block;font-size:11px;color:var(--muted);margin-top:1px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.all-row .go{font-size:18px;color:#CFC2AC;line-height:1;padding:0 2px;flex:0 0 auto}
 
 /* ---------- 搜索 ---------- */
 .searchbar{margin:16px 0 6px;position:relative}
@@ -351,9 +371,9 @@ header.top{
 
 <div class="wrap">
   <div class="overview">
-    <div class="stat"><span>物品总数</span><b id="stTotal">0<i>件</i></b></div>
+    <div class="stat link" id="stTotalCard" onclick="openAll()"><span>物品总数</span><b id="stTotal">0<i>件</i></b></div>
     <div class="stat"><span>柜子</span><b id="stCabs">0<i>个</i></b></div>
-    <div class="stat"><span>物品品类</span><b id="stTypes">0<i>种</i></b></div>
+    <div class="stat link" id="stTypesCard" onclick="openLib()"><span>物品品类</span><b id="stTypes">0<i>种</i></b></div>
   </div>
 
   <div class="searchbar">
@@ -464,11 +484,46 @@ header.top{
 <div class="mini-mask" id="whoMask">
   <div class="mini-card">
     <h4>你是谁呀？</h4>
-    <p>填个名字，家里人就能看到是谁放的、谁取走的</p>
+    <p>填个名字，家里人就能看到是谁放的、谁取走的（不填也不影响用）</p>
     <input class="field" id="whoInput" placeholder="比如：妈妈 / 爸爸 / 小美" maxlength="10" style="width:100%">
     <div class="row">
       <button class="ghost" id="whoCancel">先不填</button>
       <button class="ok" id="whoSave">就用这个</button>
+    </div>
+  </div>
+</div>
+
+<!-- 全部物品明细 -->
+<section class="sheet" id="allSheet" aria-hidden="true">
+  <div class="sheet-grip"></div>
+  <div class="sheet-head">
+    <div class="sheet-title">
+      <div class="line1"><h3>全部物品</h3></div>
+      <p id="allSub">共 0 件</p>
+    </div>
+    <button class="icon-btn" id="allClose">✕</button>
+  </div>
+  <div class="searchbar" style="margin:0 18px 10px">
+    <span class="ico"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg></span>
+    <input id="allQ" placeholder="在全部物品里找，比如「冬被」" autocomplete="off">
+  </div>
+  <div class="sheet-body"><div id="allList"></div></div>
+</section>
+
+<!-- 改名 / 改数量 弹窗 -->
+<div class="mini-mask" id="edMask">
+  <div class="mini-card">
+    <h4 id="edTitle">改物品</h4>
+    <p id="edSub">改了名字，所有柜子里都跟着改</p>
+    <input class="field" id="edName" placeholder="物品名称，如 冬被" maxlength="40" style="width:100%">
+    <div class="chips" id="edCats" style="margin:11px 0 0"></div>
+    <div class="form-row" id="edQtyRow" style="margin:2px 0 0">
+      <input class="field small" id="edQty" type="number" min="1" max="999" inputmode="numeric">
+      <input class="field" id="edNote" placeholder="备注（可留空）" maxlength="40">
+    </div>
+    <div class="row">
+      <button class="ghost" id="edCancel">取消</button>
+      <button class="ok" id="edSave">保存</button>
     </div>
   </div>
 </div>
@@ -504,10 +559,6 @@ async function api(method, path, body){
     throw new Error(msg);
   }
   return res.json();
-}
-function needWho(){
-  if(!who){ askWho(true); toast("先填个名字吧"); return true; }
-  return false;
 }
 
 /* ---------- 加载与渲染 ---------- */
@@ -549,6 +600,7 @@ function render(){
 
   if(currentCab && el("sheet").classList.contains("on")) refreshSheet();
   if(el("libSheet").classList.contains("on")) renderLib();
+  if(el("allSheet").classList.contains("on")) renderAll();
 }
 
 /* 半透明柜门 + 柜内物品直接可读 */
@@ -584,6 +636,17 @@ function findCab(id){
   for(const r of state.rooms){
     for(const c of r.cabinets){
       if(c.id === id) return {room:r, cab:c};
+    }
+  }
+  return null;
+}
+/* 按条目 id 找它在哪个房间/柜子（全部物品、搜索结果都用得上） */
+function findItem(id){
+  if(!state) return null;
+  for(const r of state.rooms){
+    for(const c of r.cabinets){
+      const it = (c.items||[]).find(x=>x.id===id);
+      if(it) return {room:r, cab:c, item:it};
     }
   }
   return null;
@@ -634,7 +697,7 @@ function refreshSheet(){
         <span>${i.qty}</span>
         <button onclick="bumpQty(${i.id},1)">＋</button>
       </div>
-      <button class="mini-edit" onclick="editItemNote(${i.id})" title="改备注">✎</button>
+      <button class="mini-edit" onclick="openItemEdit(${i.id})" title="改名字/数量/备注">✎</button>
       <button class="del" onclick="removeItem(${i.id})" title="取出">🗑</button>
     </div>`).join("")
     : `<div class="empty-state"><span class="big">🧺</span>这个柜子还空着<br>在下面从物品库选一件放进来</div>`;
@@ -662,13 +725,12 @@ function pickType(id){
   renderTypeChips();
 }
 
-el("mask").onclick = closeSheet;
+el("mask").onclick = ()=>{ closeSheet(); closeLib(); closeAll(); };
 el("shClose").onclick = closeSheet;
 
 /* ---------- 放物品 ---------- */
 async function addItem(){
   if(!state) return;
-  if(needWho()) return;
   const qty = parseInt(el("fQty").value||"1",10);
   const note = el("fNote").value.trim();
   const newName = el("newTypeName").value.trim();
@@ -694,9 +756,8 @@ el("fSave").onclick = addItem;
 el("newTypeName").addEventListener("keydown", e=>{ if(e.key==="Enter") addItem(); });
 
 async function bumpQty(id, delta){
-  const hit = findCab(currentCab); if(!hit) return;
-  const item = hit.cab.items.find(i=>i.id===id); if(!item) return;
-  const next = item.qty + delta;
+  const hit = findItem(id); if(!hit) return;
+  const next = hit.item.qty + delta;
   if(next < 1){ return removeItem(id); }
   try{
     state = await api("PATCH","/api/items/"+id,{qty:next, who});
@@ -704,21 +765,9 @@ async function bumpQty(id, delta){
   }catch(e){ toast(e.message || "修改失败"); }
 }
 
-async function editItemNote(id){
-  const hit = findCab(currentCab); if(!hit) return;
-  const item = hit.cab.items.find(i=>i.id===id); if(!item) return;
-  const v = prompt(`「${item.name}」的备注：`, item.note || "");
-  if(v === null) return;
-  try{
-    state = await api("PATCH","/api/items/"+id,{note: v.trim(), who});
-    render(); toast("备注已更新");
-  }catch(e){ toast(e.message || "修改失败"); }
-}
-
 async function removeItem(id){
-  const hit = findCab(currentCab);
-  const item = hit && hit.cab.items.find(i=>i.id===id);
-  const name = item ? item.name : "这件东西";
+  const hit = findItem(id);
+  const name = hit ? hit.item.name : "这件东西";
   if(!confirm(`把「${name}」从柜子里取出吗？`)) return;
   try{
     state = await api("DELETE","/api/items/"+id+"?who="+encodeURIComponent(who||"家人"));
@@ -726,16 +775,86 @@ async function removeItem(id){
   }catch(e){ toast(e.message || "取出失败"); }
 }
 
+/* ---------- 改名字 / 数量 / 备注（弹窗，不再用浏览器 prompt） ---------- */
+let edCtx = null;
+function openItemEdit(id){
+  const hit = findItem(id); if(!hit) return;
+  const it = hit.item;
+  edCtx = {kind:"item", itemId:it.id, typeId:it.type_id, cabId:it.cabinet_id,
+           name:it.name, cat:it.category, qty:it.qty, note:it.note || ""};
+  drawEdit("改这件物品", "改名字后，所有柜子里同名物品都跟着改", true);
+}
+function openTypeEdit(id){
+  const t = (state.types||[]).find(x=>x.id===id); if(!t) return;
+  edCtx = {kind:"type", typeId:t.id, name:t.name, cat:t.category};
+  drawEdit("修改物品库", "物品库是基础数据，改一次柜子里都跟着改", false);
+}
+function drawEdit(title, sub, withQty){
+  el("edTitle").textContent = title;
+  el("edSub").textContent = sub;
+  el("edName").value = edCtx.name || "";
+  el("edQtyRow").style.display = withQty ? "" : "none";
+  if(withQty){
+    el("edQty").value = edCtx.qty || 1;
+    el("edNote").value = edCtx.note || "";
+  }
+  drawEdCats();
+  el("edMask").classList.add("on");
+  setTimeout(()=>el("edName").focus(), 120);
+}
+function drawEdCats(){
+  el("edCats").innerHTML = CATS.map(c=>
+    `<button class="chip ${edCtx.cat===c?"on":""}" onclick="pickEdCat('${c}')">${c}</button>`).join("");
+}
+function pickEdCat(c){
+  edCtx.name = el("edName").value;      // 先记住已输入的文字
+  edCtx.cat = c;
+  el("edName").value = edCtx.name;
+  drawEdCats();
+}
+function closeEdit(){ el("edMask").classList.remove("on"); edCtx = null; }
+async function saveEdit(){
+  if(!edCtx) return;
+  const name = el("edName").value.trim();
+  if(!name){ toast("名字不能空着"); el("edName").focus(); return; }
+  const cat = edCtx.cat || "其他";
+  const btn = el("edSave"); btn.disabled = true;
+  try{
+    const t = (state.types||[]).find(x=>x.id===edCtx.typeId);
+    const needType = !t || t.name !== name || t.category !== cat;
+    if(needType && edCtx.typeId){
+      state = await api("PATCH","/api/types/"+edCtx.typeId,{name, category:cat, who});
+    }
+    if(edCtx.kind === "item"){
+      let typeId = edCtx.typeId;
+      if(needType && !typeId){          // 老数据没有基础物品：补一条，再挂上去
+        state = await api("POST","/api/types",{name, category:cat, who});
+        const created = (state.types||[]).find(x=>x.name === name);
+        typeId = created ? created.id : 0;
+      }
+      const qty = Math.max(1, Math.min(999, parseInt(el("edQty").value||"1",10) || 1));
+      const note = el("edNote").value.trim();
+      const body = {qty, note, who};
+      if(typeId) body.typeId = typeId;
+      state = await api("PATCH","/api/items/"+edCtx.itemId, body);
+    }
+    closeEdit(); render(); toast("已保存");
+  }catch(e){ toast(e.message || "保存失败"); }
+  finally{ btn.disabled = false; }
+}
+el("edCancel").onclick = closeEdit;
+el("edSave").onclick = saveEdit;
+el("edMask").addEventListener("click", e=>{ if(e.target === el("edMask")) closeEdit(); });
+el("edName").addEventListener("keydown", e=>{ if(e.key==="Enter") saveEdit(); });
+
 /* ---------- 柜子设置 ---------- */
 async function saveCabName(){
-  if(needWho()) return;
   try{
     state = await api("PATCH","/api/cabinets/"+currentCab,{name: el("cabName").value.trim(), who});
     render(); toast("柜子名已保存");
   }catch(e){ toast(e.message || "保存失败"); }
 }
 async function saveCabCode(){
-  if(needWho()) return;
   const code = el("cabCode").value.trim();
   if(!code){ toast("编号不能为空"); return; }
   try{
@@ -744,7 +863,6 @@ async function saveCabCode(){
   }catch(e){ toast(e.message || "保存失败"); }
 }
 async function deleteCab(){
-  if(needWho()) return;
   const hit = findCab(currentCab); if(!hit) return;
   if(!confirm(`确定删掉 ${hit.room.name} 的 ${hit.cab.code} 柜子吗？`)) return;
   try{
@@ -753,12 +871,9 @@ async function deleteCab(){
   }catch(e){ toast(e.message || "删除失败"); }
 }
 async function addCabinet(roomId){
-  if(needWho()) return;
-  const name = prompt("新柜子的名字（可留空）：", "");
-  if(name === null) return;
   try{
-    state = await api("POST","/api/cabinets",{roomId, name: name.trim(), who});
-    render(); toast("已加一个柜子");
+    state = await api("POST","/api/cabinets",{roomId, name:"", who});
+    render(); toast("已加一个柜子，点开可以改名字");
   }catch(e){ toast(e.message || "添加失败"); }
 }
 
@@ -784,7 +899,7 @@ function renderLib(){
         <b>${esc(t.name)}</b>
         <small>${esc(t.category)} · ${t.used ? "在 "+t.used+" 个柜子里" : "还没放进柜子"}</small>
       </div>
-      <button class="mini-edit" onclick="editType(${t.id})" title="改名/换分类">✎</button>
+      <button class="mini-edit" onclick="openTypeEdit(${t.id})" title="改名/换分类">✎</button>
       <button class="del" onclick="delType(${t.id})" title="删除">🗑</button>
     </div>`).join("") : `<div class="empty-state"><span class="big">📦</span>物品库是空的</div>`;
   el("libChips").innerHTML = CATS.map(c=>
@@ -792,7 +907,6 @@ function renderLib(){
 }
 function pickLibCat(c){ libCat = c; renderLib(); }
 async function addType(){
-  if(needWho()) return;
   const name = el("libName").value.trim();
   if(!name){ toast("先填物品名称"); el("libName").focus(); return; }
   try{
@@ -806,16 +920,7 @@ el("libBtn").onclick = openLib;
 el("libClose").onclick = closeLib;
 
 async function editType(id){
-  const t = state.types.find(x=>x.id===id); if(!t) return;
-  const name = prompt("物品名称：", t.name);
-  if(name === null) return;
-  const cat = prompt("分类（被子/床单/被套/枕头/毛毯/其他）：", t.category);
-  if(cat === null) return;
-  const c = CATS.includes(cat.trim()) ? cat.trim() : t.category;
-  try{
-    state = await api("PATCH","/api/types/"+id,{name: name.trim(), category: c, who});
-    render(); toast("已更新");
-  }catch(e){ toast(e.message || "修改失败"); }
+  openTypeEdit(id);
 }
 async function delType(id){
   const t = state.types.find(x=>x.id===id); if(!t) return;
@@ -826,6 +931,58 @@ async function delType(id){
     render(); toast("已删除");
   }catch(e){ toast(e.message || "删除失败"); }
 }
+
+/* ---------- 全部物品（点顶上的总数进来） ---------- */
+function openAll(){
+  renderAll();
+  el("mask").classList.add("on");
+  el("allSheet").classList.add("on");
+  el("allSheet").setAttribute("aria-hidden","false");
+}
+function closeAll(){
+  el("allSheet").classList.remove("on");
+  el("allSheet").setAttribute("aria-hidden","true");
+  el("mask").classList.remove("on");
+}
+function jumpCab(id){ closeAll(); setTimeout(()=>openCab(id), 60); }
+function renderAll(){
+  if(!state) return;
+  const q = (el("allQ").value || "").trim().toLowerCase();
+  let parts = [], total = 0, kinds = 0;
+  state.rooms.forEach(r=>{
+    r.cabinets.forEach(c=>{
+      const items = (c.items||[]).filter(i=> !q ||
+        [i.name, i.category, i.note, c.code, c.name, r.name].join(" ").toLowerCase().includes(q));
+      if(!items.length) return;
+      const sum = items.reduce((s,i)=>s+i.qty, 0);
+      total += sum; kinds += items.length;
+      parts.push(`<div class="all-group">
+        <div class="all-ghead" onclick="jumpCab(${c.id})">
+          <b>${esc(r.name)} ${esc(c.code)}</b>${c.name?`<span>${esc(c.name)}</span>`:""}
+          <span class="cnt">${sum} 件 ›</span>
+        </div>
+        ${items.map(i=>`<div class="all-row">
+          <span class="catdot" style="background:${CAT_COLOR[i.category]||"#C3B9AA"}"></span>
+          <div class="body" onclick="openItemEdit(${i.id})"><b>${esc(i.name)}</b>
+            <small>${esc(i.category)}${i.note?" · "+esc(i.note):""}</small></div>
+          <div class="qty">
+            <button onclick="bumpQty(${i.id},-1)">−</button>
+            <span>${i.qty}</span>
+            <button onclick="bumpQty(${i.id},1)">＋</button>
+          </div>
+          <button class="mini-edit" onclick="openItemEdit(${i.id})" title="改名字/数量/备注">✎</button>
+        </div>`).join("")}
+      </div>`);
+    });
+  });
+  el("allSub").textContent = q
+    ? `筛出 ${kinds} 种 · 共 ${total} 件`
+    : `共 ${kinds} 种 · ${total} 件，点名字就能直接改`;
+  el("allList").innerHTML = parts.length ? parts.join("")
+    : `<div class="empty-state"><span class="big">🔍</span>没有找到对应的东西</div>`;
+}
+el("allClose").onclick = closeAll;
+el("allQ").addEventListener("input", renderAll);
 
 /* ---------- 搜索 ---------- */
 let searchTimer = null;
@@ -870,7 +1027,7 @@ el("whoInput").addEventListener("keydown", e=>{ if(e.key==="Enter") el("whoSave"
 
 /* ---------- 启动 ---------- */
 load();
-if(!who) setTimeout(()=>askWho(), 700);
+/* 不再每次都弹「你是谁」：想留名字点右上角就好 */
 
 /* 多人共用：每 20 秒静默同步 */
 setInterval(async ()=>{
