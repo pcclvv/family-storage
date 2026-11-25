@@ -116,6 +116,10 @@ def init_db():
           detail TEXT NOT NULL DEFAULT '',
           at TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS config (
+          key TEXT PRIMARY KEY,
+          value TEXT NOT NULL DEFAULT ''
+        );
         CREATE INDEX IF NOT EXISTS idx_items_cab ON items(cabinet_id);
         """
     )
@@ -267,6 +271,7 @@ def get_state():
     cats_rows = [dict(r) for r in c.execute("SELECT * FROM cats ORDER BY sort, id")]
     cats = [r["name"] for r in cats_rows]
     logs = [dict(r) for r in c.execute("SELECT * FROM logs ORDER BY id DESC LIMIT 12")]
+    cfg = {r["key"]: r["value"] for r in c.execute("SELECT * FROM config")}
     for it in items:
         if it.get("tname"):
             it["name"] = it["tname"]
@@ -295,7 +300,7 @@ def get_state():
                                         "label": "%s %s" % (room["name"], cab["code"])}
     for t in types:
         t["place"] = place.get(t["id"])
-    return {"rooms": rooms, "logs": logs, "types": types, "categories": cats, "cats": cats_rows}
+    return {"rooms": rooms, "logs": logs, "types": types, "categories": cats, "cats": cats_rows, "cfg": cfg}
 
 
 TABLE_COLS = {
@@ -306,6 +311,7 @@ TABLE_COLS = {
     "items": {"id", "cabinet_id", "type_id", "name", "category", "qty", "note", "who",
               "created_at", "updated_at"},
     "logs": {"id", "who", "action", "detail", "at"},
+    "config": {"key", "value"},
 }
 
 
@@ -324,9 +330,9 @@ def load_all(payload):
         return {"error": "这个备份文件里没有房间/柜子数据，没有导入"}
     with _db_lock:
         c = conn()
-        for t in ("items", "cabinets", "types", "cats", "rooms", "logs"):
+        for t in ("items", "cabinets", "types", "cats", "rooms", "logs", "config"):
             c.execute("DELETE FROM %s" % t)
-        for t in ("rooms", "cabinets", "types", "cats", "items", "logs"):
+        for t in ("rooms", "cabinets", "types", "cats", "items", "logs", "config"):
             cols = TABLE_COLS[t]
             for row in data.get(t, []):
                 keys = [k for k in row.keys() if k in cols]
@@ -441,6 +447,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._add_cabinet(body)
         if path == "/api/cats":
             return self._add_cat(body)
+        if path == "/api/config":
+            return self._set_config(body)
         if path == "/api/import":
             res = load_all(body)
             if isinstance(res, dict) and res.get("error"):
@@ -515,6 +523,27 @@ class Handler(BaseHTTPRequestHandler):
         return self._send(200, get_state())
 
     # ---------- 物品「种类」（可自定义） ----------
+    # ---------- 全局设置 ----------
+    DOOR_LABEL = {"solid": "实门", "glass": "半透明", "clear": "全透明"}
+
+    def _set_config(self, b):
+        who = self._who(b)
+        allowed = ("doorGlass",)
+        sets = {k: str(b.get(k) or "").strip()[:20] for k in allowed if k in b}
+        sets = {k: v for k, v in sets.items() if v}
+        if not sets:
+            return self._send(400, {"error": "没有要保存的设置"})
+        with _db_lock:
+            c = conn()
+            for k, v in sets.items():
+                c.execute("INSERT INTO config(key,value) VALUES(?,?) "
+                          "ON CONFLICT(key) DO UPDATE SET value=excluded.value", (k, v))
+                if k == "doorGlass":
+                    log(c, who, "设置", "柜门玻璃改成「%s」" % self.DOOR_LABEL.get(v, v))
+            c.commit()
+            c.close()
+        return self._send(200, get_state())
+
     def _add_cat(self, b):
         name = (b.get("name") or "").strip()[:10]
         if not name:

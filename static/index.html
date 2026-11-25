@@ -204,17 +204,19 @@ header.top{
 .ins-empty{font-size:9.5px;color:rgba(255,246,230,.66);text-align:center;margin:auto}
 .cab:hover .ins-line{filter:saturate(106%) brightness(1.03)}
 
-/* 半透明柜门：透过门能看清里面的东西 */
+/* 半透明柜门：透明度可在「柜子设置 → 柜门玻璃」里调，全家人同步 */
 .cab-door{
   position:absolute;top:0;bottom:0;width:50%;z-index:2;
-  background:linear-gradient(150deg,rgba(255,253,248,.32),rgba(233,221,199,.18) 58%,rgba(208,190,160,.26));
-  border:1px solid rgba(255,255,255,.5);
+  background:linear-gradient(150deg,rgba(255,252,244,var(--dg1,.55)),rgba(235,223,200,var(--dg2,.42)) 58%,rgba(210,192,162,var(--dg3,.48)));
+  border:1px solid rgba(255,255,255,.6);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.62),inset 0 0 12px rgba(255,255,255,.22),0 1px 4px rgba(110,86,54,.12);
-  backdrop-filter:blur(1px) saturate(110%);
-  -webkit-backdrop-filter:blur(1px) saturate(110%);
+  backdrop-filter:blur(var(--dgBlur,1.5px)) saturate(110%);
+  -webkit-backdrop-filter:blur(var(--dgBlur,1.5px)) saturate(110%);
   transition:transform .5s cubic-bezier(.2,.85,.2,1),box-shadow .3s,background .3s;
   overflow:hidden;
 }
+body[data-door="clear"]{--dg1:.18;--dg2:.10;--dg3:.14;--dgBlur:.5px}
+body[data-door="solid"]{--dg1:.97;--dg2:.95;--dg3:.94;--dgBlur:6px}
 .cab-door::before{ /* 玻璃斜向高光 */
   content:"";position:absolute;inset:0;
   background:linear-gradient(115deg,rgba(255,255,255,.30) 0%,rgba(255,255,255,.05) 36%,rgba(255,255,255,0) 52%,rgba(255,255,255,.13) 100%);
@@ -242,7 +244,7 @@ header.top{
 .cab-foot b{color:#5C4E3B;font-weight:650}
 .cab-foot .empty{color:#B4A794}
 
-/* 小柜子（半格）：窄柜，单门，内部只留彩色叠放条 */
+/* 小柜子（半格）：窄柜，单门，物品名用小字显示 */
 .cab.half{border-radius:14px}
 .cab.half .cab-head{padding:8px 8px 0;gap:4px}
 .cab.half .cab-code{font-size:10px;padding:1px 5px;letter-spacing:.3px;border-radius:6px}
@@ -250,8 +252,9 @@ header.top{
 .cab.half .cab-count{display:none}
 .cab.half .cab-body{margin:9px 8px 0}   /* 高度与大柜一致，继承 118px */
 .cab.half .cab-inside{inset:5px;padding:4px;gap:2px}
-.cab.half .ins-line{height:9px;padding:0;border-radius:3px;box-shadow:0 1px 1px rgba(0,0,0,.14)}
-.cab.half .ins-line b,.cab.half .ins-line em{display:none}
+.cab.half .ins-line{height:12px;padding:0 3px;border-radius:3px;box-shadow:0 1px 1px rgba(0,0,0,.14)}
+.cab.half .ins-line b{display:block;flex:1;min-width:0;font-size:8.5px;font-weight:600;color:#332B22}
+.cab.half .ins-line em{display:none}
 .cab.half .ins-more{font-size:8px;text-align:center;padding-right:0}
 .cab.half .ins-empty{font-size:8.5px}
 .cab.half .cab-foot{flex:1 0 auto;display:flex;align-items:center;justify-content:center;padding:7px 6px 8px;font-size:9.5px;text-align:center}
@@ -490,6 +493,15 @@ header.top{
       <div class="form-tip" style="text-align:left;margin-top:8px">小柜子只占半格宽，适合矮柜、鞋柜；柜子数量可以随时用房间右边的「＋ 柜子」加，在下面删</div>
     </div>
     <div class="setting-block">
+      <h4>柜门玻璃</h4>
+      <div class="form-row" style="margin-bottom:0">
+        <button class="top-btn" id="dgSolid" onclick="setDoor('solid')">实门</button>
+        <button class="top-btn" id="dgGlass" onclick="setDoor('glass')">半透明</button>
+        <button class="top-btn" id="dgClear" onclick="setDoor('clear')">全透明</button>
+      </div>
+      <div class="form-tip" style="text-align:left;margin-top:8px">调柜门玻璃的透明程度：半透明能隐约看到里面，全透明看得很清楚，实门基本看不到；这是全家统一的设置</div>
+    </div>
+    <div class="setting-block">
       <h4>删掉这个柜子</h4>
       <button class="btn-ghost" onclick="deleteCab()">删除柜子</button>
       <div class="form-tip" style="text-align:left;margin-top:8px">柜子里的东西要先取出，才能删柜子</div>
@@ -640,6 +652,7 @@ async function load(){
 
 function render(){
   if(!state) return;
+  applyDoor();
   el("whoName").textContent = who || "家人";
   let total = 0;
   state.rooms.forEach(r=>{ total += r.count; });
@@ -954,6 +967,20 @@ el("edMask").addEventListener("click", e=>{ if(e.target === el("edMask")) closeE
 el("edName").addEventListener("keydown", e=>{ if(e.key==="Enter") saveEdit(); });
 
 /* ---------- 柜子设置 ---------- */
+function applyDoor(){
+  const v = (state.cfg && state.cfg.doorGlass) || "glass";
+  document.body.dataset.door = v;
+  ["Solid","Glass","Clear"].forEach(s=>{
+    const b = el("dg"+s);
+    if(b) b.className = "top-btn" + (v === s.toLowerCase() ? " solid" : "");
+  });
+}
+async function setDoor(v){
+  try{
+    state = await api("POST","/api/config",{doorGlass:v, who});
+    applyDoor(); toast("柜门玻璃已调整");
+  }catch(e){ toast(e.message || "保存失败"); }
+}
 async function saveCabName(){
   try{
     state = await api("PATCH","/api/cabinets/"+currentCab,{name: el("cabName").value.trim(), who});
