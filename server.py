@@ -20,7 +20,7 @@ STATIC = os.path.join(BASE, "static")
 DATA = os.path.join(BASE, "data")
 DB_PATH = os.path.join(DATA, "storage.db")
 
-CATEGORIES = ["被子", "床单", "被套", "枕头", "毛毯", "其他"]
+CATEGORIES = ["被子", "床单", "被套", "枕头", "毛毯", "其他"]   # 初始种类，之后可在页面上自己加
 ROOM_PREFIX = ["A", "B", "C", "D", "E", "F", "G", "H"]
 _db_lock = threading.Lock()
 
@@ -60,6 +60,11 @@ def init_db():
           category TEXT NOT NULL DEFAULT '其他',
           sort INTEGER NOT NULL DEFAULT 0
         );
+        CREATE TABLE IF NOT EXISTS cats (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          sort INTEGER NOT NULL DEFAULT 0
+        );
         CREATE TABLE IF NOT EXISTS items (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           cabinet_id INTEGER NOT NULL,
@@ -83,6 +88,7 @@ def init_db():
         """
     )
     migrate(c)
+    ensure_cats(c)
     c.execute("CREATE INDEX IF NOT EXISTS idx_items_type ON items(type_id)")
     if fresh or c.execute("SELECT COUNT(*) n FROM rooms").fetchone()["n"] == 0:
         seed(c)
@@ -106,6 +112,34 @@ def migrate(c):
             c.execute("INSERT INTO types(name,category,sort) VALUES(?,?,?)", (name, cat, 0))
             tid = c.execute("SELECT last_insert_rowid() id").fetchone()["id"]
         c.execute("UPDATE items SET type_id=? WHERE id=?", (tid, it["id"]))
+
+
+def ensure_cats(c):
+    """物品「种类」也是基础数据：空库时补默认几种，旧数据里出现过的种类自动补进来"""
+    names = [r["name"] for r in c.execute("SELECT name FROM cats ORDER BY sort, id")]
+    if not names:
+        for i, n in enumerate(CATEGORIES):
+            c.execute("INSERT INTO cats(name, sort) VALUES(?,?)", (n, i))
+        names = list(CATEGORIES)
+    for row in c.execute("SELECT DISTINCT category FROM types WHERE category<>''").fetchall():
+        if row["category"] not in names:
+            c.execute("INSERT INTO cats(name, sort) SELECT ?, COALESCE(MAX(sort),0)+1 FROM cats",
+                      (row["category"],))
+            names.append(row["category"])
+
+
+def cat_names(c):
+    return [r["name"] for r in c.execute("SELECT name FROM cats ORDER BY sort, id")]
+
+
+def ensure_cat(c, name):
+    """返回一个合法的种类名；库里没有就顺手补一条"""
+    name = (name or "").strip()[:10]
+    if not name:
+        return "其他"
+    if name not in cat_names(c):
+        c.execute("INSERT INTO cats(name, sort) SELECT ?, COALESCE(MAX(sort),0)+1 FROM cats", (name,))
+    return name
 
 
 def seed(c):
@@ -163,6 +197,8 @@ def get_state():
         "SELECT i.*, t.name AS tname, t.category AS tcat FROM items i "
         "LEFT JOIN types t ON t.id=i.type_id ORDER BY i.id DESC")]
     types = [dict(r) for r in c.execute("SELECT * FROM types ORDER BY sort, id")]
+    cats_rows = [dict(r) for r in c.execute("SELECT * FROM cats ORDER BY sort, id")]
+    cats = [r["name"] for r in cats_rows]
     logs = [dict(r) for r in c.execute("SELECT * FROM logs ORDER BY id DESC LIMIT 12")]
     for it in items:
         if it.get("tname"):
@@ -184,7 +220,7 @@ def get_state():
     for room in rooms:
         room["cabinets"] = [x for x in cabs if x["room_id"] == room["id"]]
         room["count"] = sum(x["count"] for x in room["cabinets"])
-    return {"rooms": rooms, "logs": logs, "types": types, "categories": CATEGORIES}
+    return {"rooms": rooms, "logs": logs, "types": types, "categories": cats, "cats": cats_rows}
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -276,6 +312,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._add_type(body)
         if path == "/api/cabinets":
             return self._add_cabinet(body)
+        if path == "/api/cats":
+            return self._add_cat(body)
         return self._send(404, {"error": "not found"})
 
     # ---------- 物品库 ----------
@@ -283,13 +321,14 @@ class Handler(BaseHTTPRequestHandler):
         name = (b.get("name") or "").strip()[:40]
         if not name:
             return self._send(400, {"error": "物品名称不能为空"})
-        cat = b.get("category") if b.get("category") in CATEGORIES else "其他"
+        cat_in = (b.get("category") or "").strip()[:10]
         who = self._who(b)
         with _db_lock:
             c = conn()
             if c.execute("SELECT id FROM types WHERE name=?", (name,)).fetchone():
                 c.close()
                 return self._send(400, {"error": "物品库里已经有「%s」了" % name})
+            cat = ensure_cat(c, cat_in)
             c.execute("INSERT INTO types(name, category, sort) VALUES(?,?,0)", (name, cat))
             log(c, who, "物品库", "新增物品「%s」（%s）" % (name, cat))
             c.commit()
@@ -298,14 +337,9 @@ class Handler(BaseHTTPRequestHandler):
 
     def _update_type(self, tid, b):
         who = self._who(b)
-        sets, args = [], []
-        if "name" in b and (b["name"] or "").strip():
-            sets.append("name=?")
-            args.append(b["name"].strip()[:40])
-        if "category" in b and b["category"] in CATEGORIES:
-            sets.append("category=?")
-            args.append(b["category"])
-        if not sets:
+        new_name = (b.get("name") or "").strip()[:40] if "name" in b else None
+        cat_in = (b.get("category") or "").strip()[:10] if "category" in b else None
+        if not new_name and cat_in is None:
             return self._send(400, {"error": "没有要修改的内容"})
         with _db_lock:
             c = conn()
@@ -313,17 +347,18 @@ class Handler(BaseHTTPRequestHandler):
             if not row:
                 c.close()
                 return self._send(404, {"error": "物品不存在"})
-            if "name" in b:
-                dup = c.execute("SELECT id FROM types WHERE name=? AND id<>?", (args[0], tid)).fetchone()
+            if new_name:
+                dup = c.execute("SELECT id FROM types WHERE name=? AND id<>?", (new_name, tid)).fetchone()
                 if dup:
                     c.close()
-                    return self._send(400, {"error": "物品库里已经有「%s」了" % args[0]})
-            c.execute("UPDATE types SET %s WHERE id=?" % ",".join(sets), args + [tid])
-            if "name" in b:
-                c.execute("UPDATE items SET name=? WHERE type_id=?", (args[0], tid))
-            if "category" in b:
-                c.execute("UPDATE items SET category=? WHERE type_id=?", (args[-1], tid))
-            log(c, who, "物品库", "修改物品「%s」" % (b.get("name") or row["name"]))
+                    return self._send(400, {"error": "物品库里已经有「%s」了" % new_name})
+                c.execute("UPDATE types SET name=? WHERE id=?", (new_name, tid))
+                c.execute("UPDATE items SET name=? WHERE type_id=?", (new_name, tid))
+            if cat_in is not None:
+                cat = ensure_cat(c, cat_in)
+                c.execute("UPDATE types SET category=? WHERE id=?", (cat, tid))
+                c.execute("UPDATE items SET category=? WHERE type_id=?", (cat, tid))
+            log(c, who, "物品库", "修改物品「%s」" % (new_name or row["name"]))
             c.commit()
             c.close()
         return self._send(200, get_state())
@@ -343,6 +378,67 @@ class Handler(BaseHTTPRequestHandler):
                                         % (row["name"], used["n"])})
             c.execute("DELETE FROM types WHERE id=?", (tid,))
             log(c, who, "物品库", "删除物品「%s」" % row["name"])
+            c.commit()
+            c.close()
+        return self._send(200, get_state())
+
+    # ---------- 物品「种类」（可自定义） ----------
+    def _add_cat(self, b):
+        name = (b.get("name") or "").strip()[:10]
+        if not name:
+            return self._send(400, {"error": "种类名称不能为空"})
+        who = self._who(b)
+        with _db_lock:
+            c = conn()
+            if name in cat_names(c):
+                c.close()
+                return self._send(400, {"error": "已经有「%s」这个种类了" % name})
+            c.execute("INSERT INTO cats(name, sort) SELECT ?, COALESCE(MAX(sort),0)+1 FROM cats", (name,))
+            log(c, who, "种类", "新增种类「%s」" % name)
+            c.commit()
+            c.close()
+        return self._send(200, get_state())
+
+    def _update_cat(self, cid, b):
+        name = (b.get("name") or "").strip()[:10]
+        if not name:
+            return self._send(400, {"error": "种类名称不能为空"})
+        who = self._who(b)
+        with _db_lock:
+            c = conn()
+            row = c.execute("SELECT * FROM cats WHERE id=?", (cid,)).fetchone()
+            if not row:
+                c.close()
+                return self._send(404, {"error": "种类不存在"})
+            if name != row["name"] and name in cat_names(c):
+                c.close()
+                return self._send(400, {"error": "已经有「%s」这个种类了" % name})
+            c.execute("UPDATE cats SET name=? WHERE id=?", (name, cid))
+            c.execute("UPDATE types SET category=? WHERE category=?", (name, row["name"]))
+            c.execute("UPDATE items SET category=? WHERE category=?", (name, row["name"]))
+            log(c, who, "种类", "种类「%s」改名为「%s」" % (row["name"], name))
+            c.commit()
+            c.close()
+        return self._send(200, get_state())
+
+    def _delete_cat(self, cid, who):
+        with _db_lock:
+            c = conn()
+            row = c.execute("SELECT * FROM cats WHERE id=?", (cid,)).fetchone()
+            if not row:
+                c.close()
+                return self._send(404, {"error": "种类不存在"})
+            total = c.execute("SELECT COUNT(*) n FROM cats").fetchone()["n"]
+            if total <= 1:
+                c.close()
+                return self._send(400, {"error": "至少要留一个种类"})
+            used = c.execute("SELECT COUNT(*) n FROM types WHERE category=?", (row["name"],)).fetchone()["n"]
+            if used:
+                c.close()
+                return self._send(400, {"error": "还有 %d 种物品属于「%s」，先把它们改成别的种类"
+                                        % (used, row["name"])})
+            c.execute("DELETE FROM cats WHERE id=?", (cid,))
+            log(c, who, "种类", "删除种类「%s」" % row["name"])
             c.commit()
             c.close()
         return self._send(200, get_state())
@@ -566,6 +662,9 @@ class Handler(BaseHTTPRequestHandler):
         m = re.match(r"^/api/rooms/(\d+)$", path)
         if m:
             return self._update_room(int(m.group(1)), body)
+        m = re.match(r"^/api/cats/(\d+)$", path)
+        if m:
+            return self._update_cat(int(m.group(1)), body)
         return self._send(404, {"error": "not found"})
 
     def do_DELETE(self):
@@ -581,6 +680,9 @@ class Handler(BaseHTTPRequestHandler):
         m = re.match(r"^/api/cabinets/(\d+)$", path)
         if m:
             return self._delete_cabinet(int(m.group(1)), who)
+        m = re.match(r"^/api/cats/(\d+)$", path)
+        if m:
+            return self._delete_cat(int(m.group(1)), who)
         return self._send(404, {"error": "not found"})
 
 

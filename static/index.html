@@ -118,6 +118,11 @@ header.top{
 .searchbar input:focus{border-color:#C9D9D0;box-shadow:0 0 0 4px rgba(94,139,122,.10)}
 .searchbar .ico{position:absolute;left:15px;top:50%;transform:translateY(-50%);opacity:.42}
 .searchbar .ico svg{width:17px;height:17px;stroke:var(--ink);fill:none;stroke-width:1.9;stroke-linecap:round}
+.searchbar.mini{margin:14px 0 0}
+.searchbar.mini input{padding:9px 40px 9px 36px;font-size:13px;border-radius:12px}
+.searchbar.mini .ico{left:12px}
+.searchbar.mini .ico svg{width:15px;height:15px}
+.searchbar.mini .search-clear{right:6px;width:26px;height:26px;font-size:12px}
 .search-clear{position:absolute;right:10px;top:50%;transform:translateY(-50%);
   width:28px;height:28px;border-radius:50%;display:none;place-items:center;
   background:var(--bg2);color:var(--muted);font-size:14px}
@@ -299,11 +304,14 @@ header.top{
 .form-row{display:flex;gap:8px;align-items:center;margin-bottom:10px}
 .chips{display:flex;gap:7px;overflow-x:auto;padding-bottom:3px;margin-bottom:10px;scrollbar-width:none}
 .chips::-webkit-scrollbar{display:none}
-.chip{flex:0 0 auto;padding:7px 12px;border-radius:999px;font-size:12.5px;
+.chip{flex:0 0 auto;display:inline-flex;align-items:center;cursor:pointer;padding:7px 12px;border-radius:999px;font-size:12.5px;
   background:#F4EEE1;border:1px solid #E8DDC9;color:#6E6250;transition:.15s}
 .chip:active{transform:scale(.96)}
 .chip.on{background:var(--sage-soft);border-color:#C6DACE;color:#3F6B5A;font-weight:600}
-.chip.used{opacity:.55}
+.chip.used{opacity:.5}
+.chip[disabled]{cursor:default}
+.chips.wrap{flex-wrap:wrap;overflow:visible}
+.chip .x{font-style:normal;font-size:10px;opacity:.45;margin-left:5px}
 .field{flex:1;min-width:0;padding:12px 13px;border-radius:13px;font-size:14px;
   background:#fff;border:1px solid #E9E0CF;outline:none;transition:.18s}
 .field:focus{border-color:#C6DACE;box-shadow:0 0 0 3px rgba(94,139,122,.10)}
@@ -370,16 +378,16 @@ header.top{
 </header>
 
 <div class="wrap">
+  <div class="searchbar mini">
+    <span class="ico"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg></span>
+    <input id="q" placeholder="找东西，如「冬被」" autocomplete="off">
+    <button class="search-clear" id="qClear">✕</button>
+  </div>
+
   <div class="overview">
     <div class="stat link" id="stTotalCard" onclick="openAll()" role="button" tabindex="0"><span>物品总数</span><b id="stTotal">0<i>件</i></b><em class="tap">点开看明细 ›</em></div>
     <div class="stat"><span>柜子</span><b id="stCabs">0<i>个</i></b></div>
     <div class="stat link" id="stTypesCard" onclick="openLib()" role="button" tabindex="0"><span>物品品类</span><b id="stTypes">0<i>种</i></b><em class="tap">点开物品库 ›</em></div>
-  </div>
-
-  <div class="searchbar">
-    <span class="ico"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg></span>
-    <input id="q" placeholder="找东西，比如「冬被」「四件套」" autocomplete="off">
-    <button class="search-clear" id="qClear">✕</button>
   </div>
 
   <div id="rooms"></div>
@@ -439,21 +447,9 @@ header.top{
     </div>
   </div>
   <div class="form" id="addForm">
-    <div class="form-label">从物品库选一件放进这个柜子</div>
-    <div class="chips" id="typeChips"></div>
-    <div class="form-row">
-      <input class="field" id="newTypeName" placeholder="物品库里没有？在这里新建" maxlength="40">
-      <select class="field small" id="newTypeCat">
-        <option>被子</option><option>床单</option><option>被套</option>
-        <option>枕头</option><option>毛毯</option><option>其他</option>
-      </select>
-    </div>
-    <div class="form-row">
-      <input class="field small" id="fQty" type="number" min="1" max="999" value="1" inputmode="numeric">
-      <input class="field" id="fNote" placeholder="备注（可留空）" maxlength="40">
-    </div>
-    <button class="btn-primary" id="fSave">放进这个柜子</button>
-    <div class="form-tip">选好物品、填好数量，点一下就好</div>
+    <div class="form-label">点一下，直接放进这个柜子（1 件）</div>
+    <div class="chips wrap" id="typeChips"></div>
+    <div class="form-tip" style="text-align:left">标 ✓ 的已经在这个柜子里了；要多件点物品旁的 ＋；这里没有的，去「物品库」加一种</div>
   </div>
 </section>
 
@@ -475,9 +471,13 @@ header.top{
     <div class="form-row">
       <input class="field" id="libName" placeholder="如：冬被 / 凉席 / 毛巾被" maxlength="40">
     </div>
-    <div class="chips" id="libChips"></div>
+    <div class="chips wrap" id="catChips"></div>
     <button class="btn-primary" id="libAdd">加到物品库</button>
-    <div class="form-tip">物品库是「基础数据」：改一次名字，所有柜子里都跟着改</div>
+    <div class="form-row" style="margin-top:10px">
+      <input class="field" id="newCatName" placeholder="加个新种类，如 窗帘 / 抱枕" maxlength="10">
+      <button class="top-btn solid" id="catAddBtn">加种类</button>
+    </div>
+    <div class="form-tip">上面是物品种类，点 ✕ 可以删掉不用的；改一次名字，所有柜子里都跟着改</div>
   </div>
 </section>
 
@@ -531,14 +531,20 @@ header.top{
 <div class="toast" id="toast"></div>
 
 <script>
-const CAT_COLOR = {"被子":"#9DC0AD","床单":"#E3C878","被套":"#DDA077","枕头":"#A9BEDB","毛毯":"#CFA6C0","其他":"#C3B9AA"};
-const CATS = ["被子","床单","被套","枕头","毛毯","其他"];
+const BASE_COLOR = {"被子":"#9DC0AD","床单":"#E3C878","被套":"#DDA077","枕头":"#A9BEDB","毛毯":"#CFA6C0","其他":"#C3B9AA"};
+const PALETTE = ["#8FB0A8","#D9B36C","#B3A0C9","#C7A98B","#94AEBB","#D6A0A0","#A8B98E"];
+/* 种类来自后端，可以自己加，颜色按顺序分配 */
+function cats(){ return (state && state.categories && state.categories.length) ? state.categories : ["其他"]; }
+function catColor(name){
+  if(BASE_COLOR[name]) return BASE_COLOR[name];
+  const i = cats().indexOf(name);
+  return PALETTE[(i < 0 ? 0 : i) % PALETTE.length];
+}
 
 let state = null;
 let who = localStorage.getItem("storage_who") || "";
 let currentCab = null;
 let currentTab = "items";
-let selectedType = null;
 let libCat = "被子";
 
 function el(id){ return document.getElementById(id); }
@@ -608,7 +614,7 @@ function cabHTML(room, cab){
   const items = cab.items || [];
   const shown = items.slice(0, 4);
   const inner = items.length
-    ? shown.map(i=>`<div class="ins-line" style="background:${(CAT_COLOR[i.category]||"#C3B9AA")}E6">
+    ? shown.map(i=>`<div class="ins-line" style="background:${catColor(i.category)}E6">
          <b>${esc(i.name)}</b><em>×${i.qty}</em></div>`).join("")
       + (items.length > shown.length ? `<div class="ins-more">还有 ${items.length-shown.length} 种…</div>` : "")
     : `<div class="ins-empty">空柜子</div>`;
@@ -658,8 +664,6 @@ function openCab(id){
   switchTab("items");
   el("cabName").value = hit.cab.name || "";
   el("cabCode").value = hit.cab.code || "";
-  el("newTypeName").value = ""; el("fQty").value = 1; el("fNote").value = "";
-  selectedType = null;
   refreshSheet();
   el("mask").classList.add("on");
   el("sheet").classList.add("on");
@@ -687,7 +691,7 @@ function refreshSheet(){
   el("shSub").textContent = cab.items.length ? `里面 ${cab.items.length} 种 · 共 ${cab.count} 件` : "还是空的，先放点东西进去";
   el("shItems").innerHTML = cab.items.length ? cab.items.map(i=>`
     <div class="item">
-      <span class="cat" style="background:${CAT_COLOR[i.category]||"#C3B9AA"}"></span>
+      <span class="cat" style="background:${catColor(i.category)}"></span>
       <div class="body" onclick="openItemEdit(${i.id})">
         <b>${esc(i.name)}</b>
         <small>${esc(i.category)}${i.note?" · "+esc(i.note):""}${i.who?" · "+esc(i.who)+"放的":""}</small>
@@ -711,49 +715,34 @@ function refreshSheet(){
 function renderTypeChips(){
   const types = state.types || [];
   if(!types.length){
-    el("typeChips").innerHTML = `<span class="chip" style="cursor:default">物品库还空着，先在下面新建</span>`;
+    el("typeChips").innerHTML = `<span class="chip" style="cursor:default">物品库还空着，点右上角「物品库」加一种</span>`;
     return;
   }
   const hit = findCab(currentCab);
   const inCab = new Set(hit ? hit.cab.items.map(i=>i.type_id) : []);
-  el("typeChips").innerHTML = types.map(t=>`
-    <button class="chip ${selectedType===t.id?"on":""} ${inCab.has(t.id)?"used":""}"
-      onclick="pickType(${t.id})">${esc(t.name)}${inCab.has(t.id)?" ✓":""}</button>`).join("");
+  el("typeChips").innerHTML = types.map(t=>{
+    if(inCab.has(t.id)){
+      return `<button class="chip used" disabled>${esc(t.name)} ✓</button>`;
+    }
+    return `<button class="chip" onclick="putItem(${t.id})">${esc(t.name)}</button>`;
+  }).join("");
 }
-function pickType(id){
-  selectedType = (selectedType === id) ? null : id;
-  renderTypeChips();
+
+/* 点一下＝直接放 1 件 */
+let putting = false;
+async function putItem(typeId){
+  if(!currentCab || putting) return;
+  putting = true;
+  try{
+    state = await api("POST","/api/items",{cabinetId: currentCab, typeId, qty: 1, note: "", who});
+    render();
+    toast("已放进 " + (findCab(currentCab)?.cab.code || "") + " ✓（1 件）");
+  }catch(e){ toast(e.message || "放不进去"); }
+  finally{ putting = false; }
 }
 
 el("mask").onclick = ()=>{ closeSheet(); closeLib(); closeAll(); };
 el("shClose").onclick = closeSheet;
-
-/* ---------- 放物品 ---------- */
-async function addItem(){
-  if(!state) return;
-  const qty = parseInt(el("fQty").value||"1",10);
-  const note = el("fNote").value.trim();
-  const newName = el("newTypeName").value.trim();
-  const btn = el("fSave"); btn.disabled = true;
-  try{
-    if(newName){
-      state = await api("POST","/api/types",{name:newName, category: el("newTypeCat").value, who});
-      const t = state.types.find(x=>x.name===newName);
-      state = await api("POST","/api/items",{cabinetId: currentCab, typeId: t.id, qty, note, who});
-      el("newTypeName").value = "";
-    }else{
-      if(!selectedType){ toast("先在上面选一件物品"); btn.disabled=false; return; }
-      state = await api("POST","/api/items",{cabinetId: currentCab, typeId: selectedType, qty, note, who});
-    }
-    selectedType = null;
-    el("fQty").value = 1; el("fNote").value = "";
-    render();
-    toast("已放进 " + (findCab(currentCab)?.cab.code || "") + " ✓");
-  }catch(e){ toast(e.message || "保存失败"); }
-  finally{ btn.disabled = false; }
-}
-el("fSave").onclick = addItem;
-el("newTypeName").addEventListener("keydown", e=>{ if(e.key==="Enter") addItem(); });
 
 async function bumpQty(id, delta){
   const hit = findItem(id); if(!hit) return;
@@ -803,8 +792,8 @@ function drawEdit(title, sub, withQty){
   setTimeout(()=>el("edName").focus(), 120);
 }
 function drawEdCats(){
-  el("edCats").innerHTML = CATS.map(c=>
-    `<button class="chip ${edCtx.cat===c?"on":""}" onclick="pickEdCat('${c}')">${c}</button>`).join("");
+  el("edCats").innerHTML = cats().map(c=>
+    `<button class="chip ${edCtx.cat===c?"on":""}" onclick="pickEdCat('${esc(c)}')">${esc(c)}</button>`).join("");
 }
 function pickEdCat(c){
   edCtx.name = el("edName").value;      // 先记住已输入的文字
@@ -894,7 +883,7 @@ function renderLib(){
   el("libSub").textContent = types.length ? `共 ${types.length} 种基础物品，柜子里都从这儿选` : "还没有物品，先在下面加一个";
   el("libList").innerHTML = types.length ? types.map(t=>`
     <div class="lib-row">
-      <span class="cat" style="width:9px;height:9px;border-radius:50%;background:${CAT_COLOR[t.category]||"#C3B9AA"};flex:0 0 auto"></span>
+      <span class="cat" style="width:9px;height:9px;border-radius:50%;background:${catColor(t.category)};flex:0 0 auto"></span>
       <div class="body" onclick="openTypeEdit(${t.id})">
         <b>${esc(t.name)}</b>
         <small>${esc(t.category)} · ${t.used ? "在 "+t.used+" 个柜子里" : "还没放进柜子"}</small>
@@ -902,10 +891,19 @@ function renderLib(){
       <button class="mini-edit" onclick="openTypeEdit(${t.id})" title="改名/换分类">✎</button>
       <button class="del" onclick="delType(${t.id})" title="删除">🗑</button>
     </div>`).join("") : `<div class="empty-state"><span class="big">📦</span>物品库是空的</div>`;
-  el("libChips").innerHTML = CATS.map(c=>
-    `<button class="chip ${libCat===c?"on":""}" onclick="pickLibCat('${c}')">${c}</button>`).join("");
+  renderCatChips();
 }
-function pickLibCat(c){ libCat = c; renderLib(); }
+/* 种类：点名字＝给新物品选种类，点 ✕＝删掉这个种类 */
+function renderCatChips(){
+  const list = cats();
+  if(!list.includes(libCat)) libCat = list[0];
+  el("catChips").innerHTML = list.map(c=>`
+    <div class="chip ${libCat===c?"on":""}">
+      <span onclick="pickLibCat('${esc(c)}')">${esc(c)}</span>
+      <i class="x" onclick="delCat('${esc(c)}', event)">✕</i>
+    </div>`).join("");
+}
+function pickLibCat(c){ libCat = c; renderCatChips(); }
 async function addType(){
   const name = el("libName").value.trim();
   if(!name){ toast("先填物品名称"); el("libName").focus(); return; }
@@ -914,8 +912,31 @@ async function addType(){
     el("libName").value = ""; render(); toast("已加入物品库");
   }catch(e){ toast(e.message || "添加失败"); }
 }
+async function addCat(){
+  const name = el("newCatName").value.trim();
+  if(!name){ toast("先填种类名称"); el("newCatName").focus(); return; }
+  try{
+    state = await api("POST","/api/cats",{name, who});
+    el("newCatName").value = "";
+    libCat = name; render(); toast("已加种类「" + name + "」");
+  }catch(e){ toast(e.message || "添加失败"); }
+}
+async function delCat(name, ev){
+  if(ev) ev.stopPropagation();
+  const row = (state.cats || []).find(x=>x.name === name);
+  if(!row) return;
+  const used = (state.types || []).filter(t=>t.category === name).length;
+  if(used){ toast(`「${name}」里还有 ${used} 种物品，先把它们改成别的种类`); return; }
+  if(!confirm(`删掉种类「${name}」？`)) return;
+  try{
+    state = await api("DELETE","/api/cats/"+row.id+"?who="+encodeURIComponent(who||"家人"));
+    render(); toast("已删除");
+  }catch(e){ toast(e.message || "删除失败"); }
+}
 el("libAdd").onclick = addType;
 el("libName").addEventListener("keydown", e=>{ if(e.key==="Enter") addType(); });
+el("catAddBtn").onclick = addCat;
+el("newCatName").addEventListener("keydown", e=>{ if(e.key==="Enter") addCat(); });
 el("libBtn").onclick = openLib;
 el("libClose").onclick = closeLib;
 
@@ -962,7 +983,7 @@ function renderAll(){
           <span class="cnt">${sum} 件 ›</span>
         </div>
         ${items.map(i=>`<div class="all-row">
-          <span class="catdot" style="background:${CAT_COLOR[i.category]||"#C3B9AA"}"></span>
+          <span class="catdot" style="background:${catColor(i.category)}"></span>
           <div class="body" onclick="openItemEdit(${i.id})"><b>${esc(i.name)}</b>
             <small>${esc(i.category)}${i.note?" · "+esc(i.note):""}</small></div>
           <div class="qty">
