@@ -277,7 +277,7 @@ header.top{
 .item{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:14px;
   background:#FBF7EF;border:1px solid #EFE7D8}
 .item .cat{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
-.item .body{flex:1;min-width:0}
+.item .body{flex:1;min-width:0;cursor:pointer}
 .item .body b{font-size:14px;font-weight:600}
 .item .body small{display:block;font-size:11.5px;color:var(--muted);margin-top:2px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -321,7 +321,7 @@ header.top{
 /* 物品库列表 */
 .lib-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;
   background:#FBF7EF;border:1px solid #EFE7D8}
-.lib-row .body{flex:1;min-width:0}
+.lib-row .body{flex:1;min-width:0;cursor:pointer}
 .lib-row .body b{font-size:13.5px;font-weight:600}
 .lib-row .body small{display:block;font-size:11px;color:var(--muted);margin-top:1px}
 .tag{font-size:11px;color:#8A7E6B;background:#F1E6D2;border:1px solid #E4D6BC;border-radius:6px;padding:2px 6px}
@@ -688,7 +688,7 @@ function refreshSheet(){
   el("shItems").innerHTML = cab.items.length ? cab.items.map(i=>`
     <div class="item">
       <span class="cat" style="background:${CAT_COLOR[i.category]||"#C3B9AA"}"></span>
-      <div class="body">
+      <div class="body" onclick="openItemEdit(${i.id})">
         <b>${esc(i.name)}</b>
         <small>${esc(i.category)}${i.note?" · "+esc(i.note):""}${i.who?" · "+esc(i.who)+"放的":""}</small>
       </div>
@@ -895,7 +895,7 @@ function renderLib(){
   el("libList").innerHTML = types.length ? types.map(t=>`
     <div class="lib-row">
       <span class="cat" style="width:9px;height:9px;border-radius:50%;background:${CAT_COLOR[t.category]||"#C3B9AA"};flex:0 0 auto"></span>
-      <div class="body">
+      <div class="body" onclick="openTypeEdit(${t.id})">
         <b>${esc(t.name)}</b>
         <small>${esc(t.category)} · ${t.used ? "在 "+t.used+" 个柜子里" : "还没放进柜子"}</small>
       </div>
