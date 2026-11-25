@@ -11,6 +11,7 @@ import os
 import re
 import sqlite3
 import threading
+import time
 from datetime import datetime
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
@@ -23,6 +24,35 @@ DB_PATH = os.path.join(DATA, "storage.db")
 CATEGORIES = ["被子", "床单", "被套", "枕头", "毛毯", "其他"]   # 初始种类，之后可在页面上自己加
 ROOM_PREFIX = ["A", "B", "C", "D", "E", "F", "G", "H"]
 _db_lock = threading.Lock()
+
+
+BAK_PATH = DB_PATH + ".bak"
+START_TS = time.time()
+
+
+def backup_db():
+    """每次写操作后把数据库整份备份一份，防止文件被重置/损坏时数据全丢"""
+    try:
+        src = sqlite3.connect(DB_PATH, timeout=10)
+        dst = sqlite3.connect(BAK_PATH)
+        with dst:
+            src.backup(dst)
+        dst.close()
+        src.close()
+    except Exception:
+        pass
+
+
+def restore_if_missing():
+    """数据库文件不见了（例如环境重启）但备份还在，就自动还原"""
+    if not os.path.exists(DB_PATH) and os.path.exists(BAK_PATH):
+        try:
+            with open(BAK_PATH, "rb") as f, open(DB_PATH, "wb") as g:
+                g.write(f.read())
+            return True
+        except Exception:
+            return False
+    return False
 
 
 def now_str():
@@ -38,6 +68,7 @@ def conn():
 
 def init_db():
     os.makedirs(DATA, exist_ok=True)
+    restore_if_missing()
     fresh = not os.path.exists(DB_PATH)
     c = conn()
     c.executescript(
@@ -223,11 +254,56 @@ def get_state():
     return {"rooms": rooms, "logs": logs, "types": types, "categories": cats, "cats": cats_rows}
 
 
+TABLE_COLS = {
+    "rooms": {"id", "name", "sort"},
+    "cabinets": {"id", "room_id", "code", "name", "sort"},
+    "types": {"id", "name", "category", "sort"},
+    "cats": {"id", "name", "sort"},
+    "items": {"id", "cabinet_id", "type_id", "name", "category", "qty", "note", "who",
+              "created_at", "updated_at"},
+    "logs": {"id", "who", "action", "detail", "at"},
+}
+
+
+def dump_all():
+    """导出全部数据（备份用）"""
+    c = conn()
+    data = {t: [dict(r) for r in c.execute("SELECT * FROM %s" % t)] for t in TABLE_COLS}
+    c.close()
+    return {"exported_at": now_str(), "data": data}
+
+
+def load_all(payload):
+    """整份导入，覆盖现有数据（文件不对就拒绝，别把现有数据冲掉）"""
+    data = (payload or {}).get("data") or {}
+    if not data.get("rooms") or not data.get("cabinets"):
+        return {"error": "这个备份文件里没有房间/柜子数据，没有导入"}
+    with _db_lock:
+        c = conn()
+        for t in ("items", "cabinets", "types", "cats", "rooms", "logs"):
+            c.execute("DELETE FROM %s" % t)
+        for t in ("rooms", "cabinets", "types", "cats", "items", "logs"):
+            cols = TABLE_COLS[t]
+            for row in data.get(t, []):
+                keys = [k for k in row.keys() if k in cols]
+                if not keys:
+                    continue
+                c.execute("INSERT INTO %s(%s) VALUES(%s)" % (t, ",".join(keys), ",".join("?" * len(keys))),
+                          [row[k] for k in keys])
+        ensure_cats(c)
+        log(c, "导入", "导入", "覆盖导入了 %d 条柜内物品记录" % len(data.get("items", [])))
+        c.commit()
+        c.close()
+    return get_state()
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "StorageHome/2.0"
 
     # ---------- 工具 ----------
     def _send(self, code, body, ctype="application/json; charset=utf-8"):
+        if code == 200 and getattr(self, "command", "") in ("POST", "PATCH", "DELETE"):
+            backup_db()
         data = body if isinstance(body, bytes) else json.dumps(body, ensure_ascii=False).encode()
         self.send_response(code)
         self.send_header("Content-Type", ctype)
@@ -261,7 +337,14 @@ class Handler(BaseHTTPRequestHandler):
         if path.startswith("/static/"):
             return self._serve_file(path[len("/static/"):])
         if path == "/api/health":
-            return self._send(200, {"ok": True, "time": now_str()})
+            return self._send(200, {
+                "ok": True, "time": now_str(), "pid": os.getpid(),
+                "uptime": int(time.time() - START_TS),
+                "db": os.path.getsize(DB_PATH) if os.path.exists(DB_PATH) else 0,
+                "bak": os.path.getsize(BAK_PATH) if os.path.exists(BAK_PATH) else 0,
+            })
+        if path == "/api/export":
+            return self._send(200, dump_all())
         if path == "/api/state":
             return self._send(200, get_state())
         if path == "/api/search":
@@ -314,6 +397,11 @@ class Handler(BaseHTTPRequestHandler):
             return self._add_cabinet(body)
         if path == "/api/cats":
             return self._add_cat(body)
+        if path == "/api/import":
+            res = load_all(body)
+            if isinstance(res, dict) and res.get("error"):
+                return self._send(400, res)
+            return self._send(200, res)
         return self._send(404, {"error": "not found"})
 
     # ---------- 物品库 ----------

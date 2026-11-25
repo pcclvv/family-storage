@@ -369,6 +369,7 @@ header.top{
       </div>
     </div>
     <div class="top-spacer"></div>
+    <button class="top-btn" id="refreshBtn" title="刷新数据">⟳ <span class="t">刷新</span></button>
     <button class="top-btn" id="libBtn">🧺 <span class="t">物品库</span></button>
     <button class="who-chip" id="whoBtn">
       <span class="who-dot"></span>
@@ -464,6 +465,15 @@ header.top{
     <button class="icon-btn" id="libClose">✕</button>
   </div>
   <div class="sheet-body">
+    <div class="setting-block">
+      <h4>数据备份</h4>
+      <div class="form-row" style="margin-bottom:0">
+        <button class="top-btn" onclick="exportData()">导出备份</button>
+        <button class="top-btn" onclick="el('importFile').click()">导入备份</button>
+        <input type="file" id="importFile" accept="application/json,.json" style="display:none">
+      </div>
+      <div class="form-tip" style="text-align:left;margin-top:8px">导出会存成一个 JSON 文件；换手机、重装或数据被重置时，导入就能整份恢复</div>
+    </div>
     <div class="items" id="libList"></div>
   </div>
   <div class="form">
@@ -702,7 +712,7 @@ function refreshSheet(){
         <button onclick="bumpQty(${i.id},1)">＋</button>
       </div>
       <button class="mini-edit" onclick="openItemEdit(${i.id})" title="改名字/数量/备注">✎</button>
-      <button class="del" onclick="removeItem(${i.id})" title="取出">🗑</button>
+      <button class="del" onclick="removeItem(${i.id})" title="取出">✕</button>
     </div>`).join("")
     : `<div class="empty-state"><span class="big">🧺</span>这个柜子还空着<br>在下面从物品库选一件放进来</div>`;
   renderTypeChips();
@@ -757,10 +767,10 @@ async function bumpQty(id, delta){
 async function removeItem(id){
   const hit = findItem(id);
   const name = hit ? hit.item.name : "这件东西";
-  if(!confirm(`把「${name}」从柜子里取出吗？`)) return;
   try{
-    state = await api("DELETE","/api/items/"+id+"?who="+encodeURIComponent(who||"家人"));
-    render(); toast("已取出");
+    await api("DELETE","/api/items/"+id+"?who="+encodeURIComponent(who||"家人"));
+    state = await api("GET","/api/state");
+    render(); toast(`「${name}」已取出，点物品名可以再放回来`);
   }catch(e){ toast(e.message || "取出失败"); }
 }
 
@@ -938,6 +948,44 @@ el("libName").addEventListener("keydown", e=>{ if(e.key==="Enter") addType(); })
 el("catAddBtn").onclick = addCat;
 el("newCatName").addEventListener("keydown", e=>{ if(e.key==="Enter") addCat(); });
 el("libBtn").onclick = openLib;
+
+/* ---------- 刷新 / 备份 ---------- */
+el("refreshBtn").onclick = async function(){
+  const b = el("refreshBtn"); if(b.disabled) return;
+  b.disabled = true;
+  try{
+    state = await api("GET","/api/state");
+    render();
+    toast("已刷新 · " + new Date().toLocaleTimeString("zh-CN",{hour:"2-digit",minute:"2-digit"}));
+  }catch(e){ toast("刷新失败，检查下网络"); }
+  finally{ b.disabled = false; }
+};
+
+async function exportData(){
+  try{
+    const d = await api("GET","/api/export");
+    const blob = new Blob([JSON.stringify(d, null, 2)], {type:"application/json"});
+    const a = document.createElement("a");
+    const stamp = new Date().toISOString().slice(0,10);
+    a.href = URL.createObjectURL(blob);
+    a.download = `柜子备份-${stamp}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 3000);
+    toast("备份已导出");
+  }catch(e){ toast(e.message || "导出失败"); }
+}
+el("importFile").addEventListener("change", async e=>{
+  const f = e.target.files && e.target.files[0];
+  if(!f) return;
+  if(!confirm("导入会覆盖现在所有数据，确定吗？")){ e.target.value=""; return; }
+  try{
+    const text = await f.text();
+    const payload = JSON.parse(text);
+    state = await api("POST","/api/import", payload.data ? payload : {data: payload});
+    render(); toast("已恢复备份");
+  }catch(err){ toast("这个文件读不出来" + (err && err.message ? "：" + err.message : "")); }
+  e.target.value = "";
+});
 el("libClose").onclick = closeLib;
 
 async function editType(id){
@@ -992,6 +1040,7 @@ function renderAll(){
             <button onclick="bumpQty(${i.id},1)">＋</button>
           </div>
           <button class="mini-edit" onclick="openItemEdit(${i.id})" title="改名字/数量/备注">✎</button>
+          <button class="del" onclick="removeItem(${i.id})" title="取出">✕</button>
         </div>`).join("")}
       </div>`);
     });
