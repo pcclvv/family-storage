@@ -523,7 +523,7 @@ button,.tab,.top-btn,.cab,.room-add,.icon-btn{touch-action:manipulation;-webkit-
     <div class="logs" id="logs"></div>
   </div>
 
-  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1129</span> <span id="kern"></span></div>
+  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1130</span> <span id="kern"></span></div>
 </div>
 
 <div class="mask" id="mask"></div>
@@ -682,7 +682,7 @@ button,.tab,.top-btn,.cab,.room-add,.icon-btn{touch-action:manipulation;-webkit-
 <div class="toast" id="toast"></div>
 
 <script>
-const VER = "v1129";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
+const VER = "v1130";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
 const BASE_COLOR = {"被子":"#9DC0AD","床单":"#E3C878","被套":"#DDA077","枕头":"#A9BEDB","毛毯":"#CFA6C0","其他":"#C3B9AA"};
 const PALETTE = ["#8FB0A8","#D9B36C","#B3A0C9","#C7A98B","#94AEBB","#D6A0A0","#A8B98E"];
 /* 种类来自后端，可以自己加，颜色按顺序分配 */
@@ -839,7 +839,7 @@ function cabHTML(room, cab, U){
   /* 小柜底部明细与大柜完全同款（同格式同字号），窄卡里自然省略号截断 */
   const foot = items.length
     ? `<b>${cab.count}</b> 件 · ${items.map(i=>esc(i.name)).slice(0,4).join("、")}${items.length>4?"…":""}`
-    : (isHalf ? `<span class="empty">空</span>` : `<span class="empty">还没有东西，点开可以放</span>`);
+    : `<span class="empty">还没有东西，点开可以放</span>`;
   const doors = isHalf
     ? `<div class="cab-door single"><i class="handle"></i></div>`
     : `<div class="cab-door left"><i class="handle"></i></div><div class="cab-door right"><i class="handle"></i></div>`;
@@ -848,7 +848,7 @@ function cabHTML(room, cab, U){
       <div class="cab-head">
         <span class="cab-code">${esc(cab.code)}</span>
         ${cab.name?`<span class="cab-name">${esc(cab.name)}</span>`:""}
-        ${cab.count?`<span class="cab-count ${cab.count>=6?"hot":""}" title="共 ${cab.count} 件">${isHalf ? cab.count : cab.count + " 件"}</span>`:""}
+        ${cab.count?`<span class="cab-count ${cab.count>=6?"hot":""}" title="共 ${cab.count} 件">${cab.count} 件</span>`:""}
       </div>
       <div class="cab-body ${isHalf?"":"twin"}">
         <div class="cab-frame"><div class="cab-inside">${inner}</div></div>
