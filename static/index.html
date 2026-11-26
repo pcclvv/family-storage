@@ -152,16 +152,15 @@ header.top{
 /* 不管几个柜子，都排两行：列数 = 柜子数/2 向上取整；宽度自动均分 */
 .cabs{display:flex;flex-direction:column;gap:13px}
 /* 不满的行：剩余空白均匀分到两边和柜子之间（居中、对称，不拉伸柜子）；
-   柜宽用 --rowgap 参与计算，任何行里的大柜都完全等宽 */
-.cab-row{--rowgap:13px;display:flex;gap:var(--rowgap);align-items:stretch;justify-content:space-evenly}
-.cabs.dense .cab-row{--rowgap:10px}
+   柜宽和间隙全部用纯百分比（部分手机内核不支持 calc/var，会丢弃宽度声明导致按内容宽度乱排） */
+.cab-row{display:flex;align-items:stretch;justify-content:space-evenly}
 .cab{min-width:0;display:flex;flex-direction:column}
 .cabs.dense{gap:10px}
 .cabs.dense .cab-head{padding:8px 8px 0;gap:4px}
 .cabs.dense .cab-body{height:100px;margin:7px 8px 0}
 .cabs.dense .cab-foot{padding:8px 9px 9px;font-size:10.5px}
 .cabs.dense .ins-line{font-size:10.5px;padding:2px 5px}
-@media (max-width:560px){.cabs{gap:11px}.cab-row{--rowgap:11px}}
+@media (max-width:560px){.cabs{gap:11px}}
 
 /* ---------- 柜子卡片：木柜 + 半透明玻璃门 ---------- */
 .cab{
@@ -526,7 +525,7 @@ button,.tab,.top-btn,.cab,.room-add,.icon-btn{touch-action:manipulation;-webkit-
     <div class="logs" id="logs"></div>
   </div>
 
-  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1133</span> <span id="kern"></span></div>
+  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1134</span> <span id="kern"></span></div>
 </div>
 
 <div class="mask" id="mask"></div>
@@ -685,7 +684,7 @@ button,.tab,.top-btn,.cab,.room-add,.icon-btn{touch-action:manipulation;-webkit-
 <div class="toast" id="toast"></div>
 
 <script>
-const VER = "v1133";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
+const VER = "v1134";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
 const BASE_COLOR = {"被子":"#9DC0AD","床单":"#E3C878","被套":"#DDA077","枕头":"#A9BEDB","毛毯":"#CFA6C0","其他":"#C3B9AA"};
 const PALETTE = ["#8FB0A8","#D9B36C","#B3A0C9","#C7A98B","#94AEBB","#D6A0A0","#A8B98E"];
 /* 种类来自后端，可以自己加，颜色按顺序分配 */
@@ -772,6 +771,7 @@ function render(){
     /* 每行至少容得下 2 个大柜（4 个半格）；大柜宽度固定，不再被小柜挤宽 */
     const U = Math.max(4, ...rows.map(rw=>rw.reduce((s,c)=>s+(c.size==="half"?1:2),0)));
     const K = Math.max(...rows.map(rw=>rw.length), 1);   /* 最多柜子的那行，决定单位宽度的基准 */
+    const GP = 3;   /* 间隙占整行的百分比，柜宽按它折算，保证铺满的那行刚好 100% */
     const dense = Math.max(1, ...rows.map(x=>x.length)) >= 4;
     const cls = "cabs" + (dense ? " dense" : "");
     return `
@@ -783,7 +783,7 @@ function render(){
         <button class="room-add" onclick="addCabinet(${r.id})">＋ 柜子</button>
       </div>
       <div class="${cls}">${rows.map(row=>row.length?
-        `<div class="cab-row">${row.map(c=>cabHTML(r,c,U,K)).join("")}</div>`:"").join("")}</div>
+        `<div class="cab-row" style="gap:${GP}%">${row.map(c=>cabHTML(r,c,U,K,GP)).join("")}</div>`:"").join("")}</div>
     </section>`;
   }).join("");
 
@@ -827,13 +827,14 @@ window.addEventListener("error", e=>{
 });
 
 /* 半透明柜门 + 柜内物品直接可读 */
-function cabHTML(room, cab, U, K){
+function cabHTML(room, cab, U, K, GP){
   const items = cab.items || [];
   const isHalf = cab.size === "half";
-  /* 宽度固定：单位宽 = (整行宽 - (K-1)个间隙) / U；大柜=2个单位，小柜=1个单位，
-     任何行、任何房间里大柜都完全等宽，小柜永远是大柜的一半 */
+  /* 宽度固定：单位宽 = (100% - (K-1)个间隙)/U；大柜=2个单位，小柜=1个单位。
+     纯百分比，不用 calc/var，任何内核都生效；任何行、任何房间里大柜完全等宽 */
   const wu = isHalf ? 1 : 2;
-  const width = `width:calc(((100% - ${(K-1)}*var(--rowgap)) / ${U}) * ${wu});flex:0 0 auto`;
+  const wpct = (wu * (100 - (K-1)*GP) / U).toFixed(3);
+  const width = `width:${wpct}%;flex:0 0 auto`;
   const maxShown = isHalf ? 7 : 4;
   const shown = items.slice(0, maxShown);
   const inner = items.length
