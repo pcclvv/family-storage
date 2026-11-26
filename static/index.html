@@ -131,8 +131,10 @@ header.top{
 .head-search .ico svg{width:14px;height:14px}
 .head-search .search-clear{right:4px;width:22px;height:22px;font-size:11px}
 @media (max-width:600px){
-  .top-in{flex-wrap:wrap}
-  .head-search{order:9;flex:1 1 100%;min-width:0}
+  .brand{flex:0 1 auto}
+  .brand h1{font-size:14px;max-width:30vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .top-in{flex-wrap:nowrap;padding:12px 14px;gap:8px}
+  .head-search{flex:1 1 110px;min-width:88px}
 }
 .search-clear{position:absolute;right:10px;top:50%;transform:translateY(-50%);
   width:28px;height:28px;border-radius:50%;display:none;place-items:center;
@@ -525,7 +527,7 @@ button,.tab,.top-btn,.cab,.room-add,.icon-btn{touch-action:manipulation;-webkit-
     <div class="logs" id="logs"></div>
   </div>
 
-  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1135</span> <span id="kern"></span></div>
+  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1136</span> <span id="kern"></span> <span id="diag"></span></div>
 </div>
 
 <div class="mask" id="mask"></div>
@@ -684,7 +686,7 @@ button,.tab,.top-btn,.cab,.room-add,.icon-btn{touch-action:manipulation;-webkit-
 <div class="toast" id="toast"></div>
 
 <script>
-const VER = "v1135";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
+const VER = "v1136";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
 const BASE_COLOR = {"被子":"#9DC0AD","床单":"#E3C878","被套":"#DDA077","枕头":"#A9BEDB","毛毯":"#CFA6C0","其他":"#C3B9AA"};
 const PALETTE = ["#8FB0A8","#D9B36C","#B3A0C9","#C7A98B","#94AEBB","#D6A0A0","#A8B98E"];
 /* 种类来自后端，可以自己加，颜色按顺序分配 */
@@ -787,7 +789,9 @@ function render(){
     </section>`;
   }).join("");
 
-  layoutRows();          /* JS 量出实际像素宽，给每张卡片写死像素宽度（兼容所有内核） */
+  layoutRows();          /* JS 量出实际像素宽，写死像素宽度（兼容所有内核） */
+  requestAnimationFrame(layoutRows);   /* 布局稳定后再校一次 */
+  setTimeout(layoutRows, 300);
 
   el("logs").innerHTML = state.logs.length ? state.logs.map(l=>`
     <div class="log-row">
@@ -801,24 +805,56 @@ function render(){
   if(el("allSheet").classList.contains("on")) renderAll();
 }
 
-/* JS 像素排版：量出每行实际宽度，按「单位宽 = (行宽 - 间隙)/U」给每张卡片写死像素宽度。
-   不依赖任何 CSS 宽度特性（calc/var/百分比在部分手机内核上不可靠），像素值所有内核都支持 */
+/* JS 像素排版：量出每行实际宽度，给每张卡片写死像素宽度。
+   三重保险：① 内联 style ② 动态注入的 <style> 规则（防止个别内核丢弃内联样式）
+   ③ 排版结果回读到页脚诊断区，一眼看出是否生效 */
 function layoutRows(){
-  const GAP = 12;
-  document.querySelectorAll(".cab-row").forEach(rw=>{
-    const kids = rw.children;
-    if(!kids.length) return;
-    const U = +rw.dataset.u || 4;
-    const K = +rw.dataset.k || kids.length;
-    const unit = (rw.clientWidth - (K-1)*GAP) / U;
-    for(const c of kids){
-      c.style.flex = "0 0 auto";
-      c.style.width = ((+c.dataset.wu || 2) * unit).toFixed(2) + "px";
+  let info = "", ok = false;
+  try{
+    const GAP = 12;
+    let css = "";
+    const rows = document.querySelectorAll(".cab-row");
+    for(let r=0; r<rows.length; r++){
+      const rw = rows[r];
+      const kids = rw.children;
+      if(kids.length < 1) continue;
+      const rowW = rw.getBoundingClientRect().width || rw.clientWidth || 0;
+      const U = parseInt(rw.getAttribute("data-u"), 10) || 4;
+      const K = parseInt(rw.getAttribute("data-k"), 10) || kids.length;
+      const unit = (rowW - (K-1)*GAP) / U;
+      for(let i=0; i<kids.length; i++){
+        const c = kids[i];
+        const wpx = (((parseInt(c.getAttribute("data-wu"), 10) || 2) * unit)).toFixed(1) + "px";
+        c.style.flex = "0 0 " + wpx;
+        c.style.width = wpx;
+        c.style.maxWidth = wpx;
+        c.style.minWidth = "0";
+        const cid = c.getAttribute("data-cab");
+        if(cid) css += '.cab[data-cab="'+cid+'"]{width:'+wpx+'!important;flex:0 0 '+wpx+'!important;max-width:'+wpx+'!important;min-width:0!important}\n';
+      }
+      if(kids.length >= 2){
+        const ws = [];
+        for(let i=0;i<kids.length;i++) ws.push(kids[i].offsetWidth);
+        const same = ws.every(function(w){ return Math.abs(w - ws[ws.length-1]) < 2 || w < ws[ws.length-1]/1.5; });
+        info = "行宽" + Math.round(rowW) + "px 柜宽" + ws.join("/") + (same ? "✓" : "✗");
+        ok = true;
+      }
     }
-  });
+  }catch(err){
+    info = "失败:" + ((err && err.message) || err);
+  }
+  /* 注入样式表规则作为第二重保险 */
+  try{
+    let sheet = document.getElementById("pxSheet");
+    if(!sheet){ sheet = document.createElement("style"); sheet.id = "pxSheet"; document.head.appendChild(sheet); }
+    sheet.textContent = css || "";
+  }catch(_){}
+  const d = document.getElementById("diag");
+  if(d) d.textContent = "排版" + (ok ? info : info);
 }
 window.addEventListener("resize", layoutRows);
-window.addEventListener("orientationchange", ()=>setTimeout(layoutRows, 120));
+window.addEventListener("orientationchange", function(){ setTimeout(layoutRows, 150); });
+document.addEventListener("visibilitychange", function(){ if(!document.hidden) layoutRows(); });
 
 /* 柜子自动分两行：按顺序找两行总宽最接近的切分点，两行都至少 2 个柜子；
    ≤3 个柜子时排一行。宽度不在这里定，由 U（每行半格数）统一算 */
