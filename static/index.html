@@ -191,7 +191,7 @@ header.top{
 .cab-body{position:relative;height:118px;margin:9px 11px 0;perspective:700px;
   border-radius:9px;box-shadow:0 8px 14px -9px rgba(84,64,40,.45)}
 .cab-frame{
-  position:absolute;inset:0;border-radius:9px;overflow:hidden;
+  position:absolute;top:0;right:0;bottom:0;left:0;border-radius:9px;overflow:hidden;
   background:linear-gradient(160deg,var(--wood-1),var(--wood-2) 55%,var(--wood-3));
   box-shadow:inset 0 1px 0 rgba(255,255,255,.6),inset 0 -3px 8px rgba(120,92,55,.18);
 }
@@ -200,11 +200,11 @@ header.top{
   background:linear-gradient(180deg,rgba(255,255,255,.55),rgba(255,255,255,0));
 }
 .cab-frame::after{
-  content:"";position:absolute;inset:0;opacity:.24;
+  content:"";position:absolute;top:0;right:0;bottom:0;left:0;opacity:.24;
   background:repeating-linear-gradient(90deg,rgba(150,120,76,.20) 0 1px,transparent 1px 7px);
 }
 .cab-inside{
-  position:absolute;inset:6px;border-radius:6px;background:#75634F;
+  position:absolute;top:6px;right:6px;bottom:6px;left:6px;border-radius:6px;background:#75634F;
   box-shadow:inset 0 4px 12px rgba(0,0,0,.30);
   display:flex;flex-direction:column;justify-content:flex-end;gap:3px;padding:5px;
   overflow:hidden;z-index:1;
@@ -237,7 +237,7 @@ header.top{
   overflow:hidden;
 }
 .cab-door::before{ /* 斜向玻璃反光带：白色高光扫过，玻璃感的关键 */
-  content:"";position:absolute;inset:0;
+  content:"";position:absolute;top:0;right:0;bottom:0;left:0;
   background:linear-gradient(115deg,
     rgba(255,255,255,0) 8%,
     rgba(255,255,255,.55) 22%,
@@ -252,7 +252,7 @@ body[data-door="solid"] .cab-door{background:linear-gradient(160deg,
     rgba(253,250,243,.97) 0%,rgba(250,244,232,.95) 42%,rgba(238,226,202,.94) 72%,rgba(253,250,243,.96) 100%)}
 body[data-door="solid"] .cab-door::before{opacity:0}
 .cab-door::after{ /* 门框 */
-  content:"";position:absolute;inset:4px;border:1px solid rgba(255,255,255,.4);border-radius:4px;
+  content:"";position:absolute;top:4px;right:4px;bottom:4px;left:4px;border:1px solid rgba(255,255,255,.4);border-radius:4px;
 }
 .cab-door.left{left:0;transform-origin:left center;border-radius:9px 3px 3px 9px}
 .cab-door.right{right:0;transform-origin:right center;border-radius:3px 9px 9px 3px}
@@ -281,7 +281,7 @@ button,.tab,.top-btn,.cab,.room-add,.icon-btn{touch-action:manipulation;-webkit-
 
 /* 小柜子（半格）：宽度只有一半、单扇门；头部/角标/底部明细/高度与大柜完全一致，
    只在柜内文字上缩小以适应窄柜 */
-.cab.half .cab-inside{inset:5px;padding:4px;gap:2px}
+.cab.half .cab-inside{top:5px;right:5px;bottom:5px;left:5px;padding:4px;gap:2px}
 .cab.half .ins-line{height:12px;padding:0 3px;border-radius:3px;box-shadow:0 1px 1px rgba(0,0,0,.14)}
 .cab.half .ins-line b{display:block;flex:1;min-width:0;font-size:8.5px;font-weight:600;color:#332B22}
 .cab.half .ins-line em{display:none}
@@ -320,7 +320,7 @@ button,.tab,.top-btn,.cab,.room-add,.icon-btn{touch-action:manipulation;-webkit-
 .log-row .at{color:#B4A894;font-size:11px;flex:0 0 auto}
 
 /* ---------- 面板 ---------- */
-.mask{position:fixed;inset:0;background:rgba(46,38,26,.34);backdrop-filter:blur(2px);
+.mask{position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(46,38,26,.34);
   opacity:0;pointer-events:none;transition:opacity .25s;z-index:60}
 .mask.on{opacity:1;pointer-events:auto}
 .sheet{position:fixed;z-index:70;left:50%;bottom:0;transform:translate(-50%,104%);
@@ -422,7 +422,7 @@ button,.tab,.top-btn,.cab,.room-add,.icon-btn{touch-action:manipulation;-webkit-
 .toast.on{opacity:1;transform:translate(-50%,0)}
 
 /* 名字弹窗 */
-.mini-mask{position:fixed;inset:0;background:rgba(46,38,26,.36);z-index:80;display:none;place-items:center;padding:20px}
+.mini-mask{position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(46,38,26,.36);z-index:80;display:none;place-items:center;padding:20px}
 .mini-mask.on{display:grid}
 .mini-card{background:var(--surface);border-radius:20px;padding:20px;width:min(340px,100%);box-shadow:var(--shadow-lg)}
 .mini-card h4{margin:0 0 4px;font-size:16px}
@@ -475,7 +475,7 @@ button,.tab,.top-btn,.cab,.room-add,.icon-btn{touch-action:manipulation;-webkit-
     <div class="logs" id="logs"></div>
   </div>
 
-  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1126</span></div>
+  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1127</span></div>
 </div>
 
 <div class="mask" id="mask"></div>
@@ -765,11 +765,10 @@ function cabHTML(room, cab, U){
          <b>${esc(i.name)}</b><em>×${i.qty}</em></div>`).join("")
       + (items.length > shown.length ? `<div class="ins-more">还有 ${items.length-shown.length} 种…</div>` : "")
     : `<div class="ins-empty">空柜子</div>`;
-  const foot = isHalf
-    ? (items.length ? `<b>${cab.count}</b> 件` : `<span class="empty">空</span>`)
-    : (items.length
-        ? `<b>${cab.count}</b> 件 · ${items.map(i=>esc(i.name)).slice(0,4).join("、")}${items.length>4?"…":""}`
-        : `<span class="empty">还没有东西，点开可以放</span>`);
+  /* 小柜底部明细与大柜完全同款（同格式同字号），窄卡里自然省略号截断 */
+  const foot = items.length
+    ? `<b>${cab.count}</b> 件 · ${items.map(i=>esc(i.name)).slice(0,4).join("、")}${items.length>4?"…":""}`
+    : (isHalf ? `<span class="empty">空</span>` : `<span class="empty">还没有东西，点开可以放</span>`);
   const doors = isHalf
     ? `<div class="cab-door single"><i class="handle"></i></div>`
     : `<div class="cab-door left"><i class="handle"></i></div><div class="cab-door right"><i class="handle"></i></div>`;
@@ -908,7 +907,7 @@ async function putItem(typeId){
   try{
     state = await api("POST","/api/items",{cabinetId: currentCab, typeId, qty: 1, note: "", who});
     render();
-    toast("已放进 " + (findCab(currentCab)?.cab.code || "") + " ✓（1 件）");
+    toast("已放进 " + ((findCab(currentCab) || {}).cab ? findCab(currentCab).cab.code : "") + " ✓（1 件）");
   }catch(e){ toast(e.message || "放不进去"); }
   finally{ putting = false; }
 }
