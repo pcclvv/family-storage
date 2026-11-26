@@ -51,8 +51,9 @@ try:
 
     code, s = call("GET", "/api/state")
     check("状态接口 200", code == 200)
-    check("两个房间", len(s["rooms"]) == 2, s.get("rooms"))
-    check("共 10 个柜子", sum(len(r["cabinets"]) for r in s["rooms"]) == 10)
+    r3 = [r for r in s["rooms"] if r.get("floor") == "F3"]
+    check("默认层两个房间", len(r3) == 2, s.get("rooms"))
+    check("默认层共 10 个柜子", sum(len(r["cabinets"]) for r in r3) == 10)
     total = sum(c["count"] for r in s["rooms"] for c in r["cabinets"])
     check("总件数 15（种子）", total == 15, total)
     check("预置种类齐全", "被子" in s["categories"] and any(t["name"]=="冬被" for t in s["types"]), s["categories"])
@@ -130,6 +131,37 @@ try:
         code, _ = call("DELETE", "/api/cabinets/%d?who=%s" % (newc[0]["id"], q("自测")))
         check("删除空柜子", code == 200)
 
+    print("== 楼层 ==")
+    code, sf = call("GET", "/api/state")
+    fls = sf.get("floors")
+    check("楼层列表 F2/F3/F4", fls == ["F2", "F3", "F4"], fls)
+    check("默认楼层 F3", sf.get("defaultFloor") == "F3", sf.get("defaultFloor"))
+    f2_rooms = [r for r in sf["rooms"] if r["floor"] == "F2"]
+    f3_rooms = [r for r in sf["rooms"] if r["floor"] == "F3"]
+    check("F2 与 F3 房间数一致", len(f2_rooms) == len(f3_rooms) and len(f2_rooms) >= 1, (len(f2_rooms), len(f3_rooms)))
+    if f2_rooms and f3_rooms:
+        c2 = sorted([c["code"] for c in f2_rooms[0]["cabinets"]])
+        c3 = sorted([c["code"] for c in f3_rooms[0]["cabinets"]])
+        check("F2 与 F3 柜子编号一致", c2 == c3, (c2, c3))
+        n2 = sum(len(c["items"]) for c in f2_rooms[0]["cabinets"])
+        check("F2 初始为空（物品独立）", n2 == 0, n2)
+        # F3 已有物品也能放进 F2（每层各放各的）
+        t3 = [t for t in sf["types"] if t["places"].get("F3")]
+        if t3:
+            fid = f2_rooms[0]["cabinets"][1]["id"]
+            code, sa = call("POST", "/api/items", {"cabinetId": fid, "typeId": t3[0]["id"], "qty": 1, "who": "自测"})
+            check("同层已占也能放到别的楼层", code == 200, sa)
+            if code == 200:
+                pl = [t for t in sa["types"] if t["id"] == t3[0]["id"]][0]
+                check("F2 位置单独记录", pl["places"].get("F2") and pl["places"].get("F3"),
+                      pl.get("places"))
+                # 清理：把 F2 的这件取出，还原状态
+                iid = [i["id"] for r2 in sa["rooms"] if r2["floor"] == "F2"
+                       for c2 in r2["cabinets"] for i in c2["items"]
+                       if i["type_id"] == t3[0]["id"]]
+                if iid:
+                    call("DELETE", "/api/items/%d?who=%s" % (iid[0], q("自测")))
+
     print("== 搜索 ==")
     code, res = call("GET", "/api/search?q=" + q("冬被"))
     check("搜冬被", code == 200 and len(res["results"]) >= 1, res)
@@ -146,7 +178,8 @@ try:
     check("导入后数据一致", {i["id"] for i in before} == {i["id"] for i in after}, (len(before), len(after)))
     code, _ = call("POST", "/api/import", {"data": {"rooms": [], "items": []}})
     s15 = call("GET", "/api/state")[1]
-    check("导入空文件被拒、原有数据还在", len(s15["rooms"]) == 2, s15["rooms"])
+    check("导入空文件被拒、原有数据还在",
+          len([r for r in s15["rooms"] if r.get("floor") == "F3"]) == 2, "rooms=" + str(len(s15["rooms"])))
 finally:
     p.terminate()
 
@@ -160,7 +193,8 @@ if os.path.exists(db):
 p2 = start()
 try:
     s16 = call("GET", "/api/state")[1]
-    check("重启后从备份还原", len(s16["rooms"]) == 2 and s16["rooms"][0]["cabinets"], s16["rooms"])
+    r16 = [r for r in s16["rooms"] if r.get("floor") == "F3"]
+    check("重启后从备份还原", len(r16) == 2 and r16[0]["cabinets"], "rooms=" + str(len(s16["rooms"])))
 finally:
     p2.terminate()
 

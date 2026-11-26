@@ -7,9 +7,11 @@ DB = os.path.join(DATA, "storage.db")
 HOST = "https://quiltmap.app.workbuddy.host"
 CK = r"D:/WorkData/quiltmap-backup/_ck3.txt"
 SCHEMA = """
-CREATE TABLE rooms (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, sort INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE rooms (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, sort INTEGER NOT NULL DEFAULT 0,
+  floor TEXT NOT NULL DEFAULT 'F3');
 CREATE TABLE cabinets (id INTEGER PRIMARY KEY AUTOINCREMENT, room_id INTEGER NOT NULL, code TEXT NOT NULL,
-  name TEXT NOT NULL DEFAULT '', size TEXT NOT NULL DEFAULT 'full', sort INTEGER NOT NULL DEFAULT 0);
+  name TEXT NOT NULL DEFAULT '', size TEXT NOT NULL DEFAULT 'full', sort INTEGER NOT NULL DEFAULT 0,
+  floor TEXT NOT NULL DEFAULT 'F3');
 CREATE TABLE types (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, category TEXT NOT NULL DEFAULT '其他',
   sort INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE cats (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, sort INTEGER NOT NULL DEFAULT 0);
@@ -24,8 +26,8 @@ CREATE INDEX idx_items_type ON items(type_id);
 """
 ORDER = ("rooms", "cabinets", "types", "cats", "items", "logs", "config")
 COLS = {
-    "rooms": ["id", "name", "sort"],
-    "cabinets": ["id", "room_id", "code", "name", "size", "sort"],
+    "rooms": ["id", "name", "sort", "floor"],
+    "cabinets": ["id", "room_id", "code", "name", "size", "sort", "floor"],
     "types": ["id", "name", "category", "sort"],
     "cats": ["id", "name", "sort"],
     "items": ["id", "cabinet_id", "type_id", "name", "category", "qty", "note", "who",
@@ -63,9 +65,11 @@ else:
                 "cats": st.get("cats", [{"name": n} for n in st.get("categories", [])]),
                 "items": [], "logs": st.get("logs", [])}
         for r in st.get("rooms", []):
-            data["rooms"].append({"id": r["id"], "name": r["name"], "sort": r.get("sort", 0)})
+            data["rooms"].append({"id": r["id"], "name": r["name"], "sort": r.get("sort", 0),
+                                  "floor": r.get("floor", "F3")})
             for cb in r.get("cabinets", []):
-                data["cabinets"].append({k: cb[k] for k in ("id", "room_id", "code", "name", "sort")})
+                data["cabinets"].append({k: cb[k] for k in ("id", "room_id", "code", "name", "sort")
+                                         if k in cb} | {"floor": cb.get("floor", "F3")})
                 for i in cb.get("items", []):
                     data["items"].append({k: i.get(k) for k in COLS["items"]})
         payload = {"exported_at": st.get("time", "") or __import__("time").strftime("%Y-%m-%d %H:%M")}

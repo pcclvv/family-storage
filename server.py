@@ -23,7 +23,9 @@ DB_PATH = os.path.join(DATA, "storage.db")
 
 CATEGORIES = ["被子", "床单", "被套", "枕头", "毛毯", "其他"]   # 初始种类，之后可在页面上自己加
 ROOM_PREFIX = ["A", "B", "C", "D", "E", "F", "G", "H"]
-PAGE_VER = "v1141"   # 页面版本号，前端拿它对比，不一致就强制重载（防手机缓存旧页面）
+FLOORS = ["F2", "F3", "F4"]     # 楼层：每层房间与柜子结构相同，柜内物品各自独立
+DEFAULT_FLOOR = "F3"            # 首页默认进 F3
+PAGE_VER = "v1142"   # 页面版本号，前端拿它对比，不一致就强制重载（防手机缓存旧页面）
 _db_lock = threading.Lock()
 
 
@@ -77,7 +79,8 @@ def init_db():
         CREATE TABLE IF NOT EXISTS rooms (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           name TEXT NOT NULL,
-          sort INTEGER NOT NULL DEFAULT 0
+          sort INTEGER NOT NULL DEFAULT 0,
+          floor TEXT NOT NULL DEFAULT 'F3'
         );
         CREATE TABLE IF NOT EXISTS cabinets (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -85,7 +88,8 @@ def init_db():
           code TEXT NOT NULL,
           name TEXT NOT NULL DEFAULT '',
           size TEXT NOT NULL DEFAULT 'full',
-          sort INTEGER NOT NULL DEFAULT 0
+          sort INTEGER NOT NULL DEFAULT 0,
+          floor TEXT NOT NULL DEFAULT 'F3'
         );
         CREATE TABLE IF NOT EXISTS types (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -130,26 +134,30 @@ def init_db():
     c.execute("CREATE INDEX IF NOT EXISTS idx_items_type ON items(type_id)")
     if fresh or c.execute("SELECT COUNT(*) n FROM rooms").fetchone()["n"] == 0:
         seed(c)
+    ensure_floors(c)
     c.commit()
     c.close()
 
 
 def merge_duplicate_types(c):
     """一种物品只应该待在一个柜子里；历史上重复放到多个柜子的，合并成一条（数量相加）"""
-    rows = c.execute("SELECT type_id, COUNT(*) n FROM items WHERE type_id>0 "
-                     "GROUP BY type_id HAVING n>1").fetchall()
+    rows = c.execute(
+        "SELECT i.type_id AS type_id, r.floor AS floor, COUNT(*) n FROM items i "
+        "JOIN cabinets cb ON cb.id=i.cabinet_id JOIN rooms r ON r.id=cb.room_id "
+        "WHERE i.type_id>0 GROUP BY i.type_id, r.floor HAVING n>1").fetchall()
     for row in rows:
         items = c.execute(
-            "SELECT i.*, cb.code, r.name AS rn FROM items i "
+            "SELECT i.*, cb.code, r.name AS rn, r.floor AS floor FROM items i "
             "JOIN cabinets cb ON cb.id=i.cabinet_id JOIN rooms r ON r.id=cb.room_id "
-            "WHERE i.type_id=? ORDER BY i.id", (row["type_id"],)).fetchall()
+            "WHERE i.type_id=? AND r.floor=? ORDER BY i.id",
+            (row["type_id"], row["floor"])).fetchall()
         keep = items[0]
         total = min(999, sum(i["qty"] for i in items))
         c.execute("UPDATE items SET qty=? WHERE id=?", (total, keep["id"]))
         for it in items[1:]:
             c.execute("DELETE FROM items WHERE id=?", (it["id"],))
-        log(c, "系统", "整理", "「%s」原来放在 %d 个柜子（%s），已合并到 %s %s，共 %d 件"
-            % (keep["name"], len(items),
+        log(c, "系统", "整理", "「%s」在 %s 原来放在 %d 个柜子（%s），已合并到 %s %s，共 %d 件"
+            % (keep["name"], keep["floor"], len(items),
                "、".join("%s %s" % (i["rn"], i["code"]) for i in items),
                keep["rn"], keep["code"], total))
 
@@ -162,6 +170,14 @@ def migrate(c):
     cols = [r["name"] for r in c.execute("PRAGMA table_info(items)")]
     if "type_id" not in cols:
         c.execute("ALTER TABLE items ADD COLUMN type_id INTEGER NOT NULL DEFAULT 0")
+    # 楼层：老数据默认都在 F3，其余楼层按 F3 的结构自动镜像出来（物品各自独立）
+    rm_cols = [r["name"] for r in c.execute("PRAGMA table_info(rooms)")]
+    if "floor" not in rm_cols:
+        c.execute("ALTER TABLE rooms ADD COLUMN floor TEXT NOT NULL DEFAULT 'F3'")
+    cb_cols2 = [r["name"] for r in c.execute("PRAGMA table_info(cabinets)")]
+    if "floor" not in cb_cols2:
+        c.execute("ALTER TABLE cabinets ADD COLUMN floor TEXT NOT NULL DEFAULT 'F3'")
+    ensure_floors(c)
     unknown = c.execute("SELECT * FROM items WHERE type_id=0").fetchall()
     for it in unknown:
         name = (it["name"] or "").strip() or "未命名物品"
@@ -173,6 +189,28 @@ def migrate(c):
             c.execute("INSERT INTO types(name,category,sort) VALUES(?,?,?)", (name, cat, 0))
             tid = c.execute("SELECT last_insert_rowid() id").fetchone()["id"]
         c.execute("UPDATE items SET type_id=? WHERE id=?", (tid, it["id"]))
+
+
+def ensure_floors(c):
+    """楼层结构：F2 / F3 / F4 每层的房间、柜子（数量/编号/大小/排序）完全一致，
+       各自独立的柜内物品。缺哪层就照参考层的结构镜像一份出来（不带物品）"""
+    have = {r["floor"] or DEFAULT_FLOOR for r in c.execute("SELECT DISTINCT floor FROM rooms")}
+    if not have:
+        return
+    tpl = DEFAULT_FLOOR if DEFAULT_FLOOR in have else sorted(have)[0]
+    rooms = [dict(r) for r in c.execute("SELECT * FROM rooms WHERE floor=? ORDER BY sort, id", (tpl,))]
+    for fl in FLOORS:
+        if fl in have:
+            continue
+        for rm in rooms:
+            c.execute("INSERT INTO rooms(name, sort, floor) VALUES(?,?,?)",
+                      (rm["name"], rm["sort"], fl))
+            new_room = c.execute("SELECT last_insert_rowid() id").fetchone()["id"]
+            for cab in c.execute("SELECT * FROM cabinets WHERE room_id=? ORDER BY sort, id", (rm["id"],)):
+                c.execute("INSERT INTO cabinets(room_id, code, name, size, sort, floor) "
+                          "VALUES(?,?,?,?,?,?)",
+                          (new_room, cab["code"], cab["name"], cab["size"], cab["sort"], fl))
+        log(c, "系统", "楼层", "新增楼层 %s：房间和柜子布置与 %s 一致，物品单独存放" % (fl, tpl))
 
 
 def ensure_cats(c):
@@ -206,15 +244,15 @@ def ensure_cat(c, name):
 def seed(c):
     """两个房间、每间 5 个柜子，物品库预置常见床品，并放几件示例"""
     for name, sort in [("主卧", 1), ("次卧", 2)]:
-        c.execute("INSERT INTO rooms(name, sort) VALUES(?,?)", (name, sort))
+        c.execute("INSERT INTO rooms(name, sort, floor) VALUES(?,?,?)", (name, sort, DEFAULT_FLOOR))
     rooms = [dict(r) for r in c.execute("SELECT * FROM rooms ORDER BY sort, id")]
     cab_ids = {}
     for idx, room in enumerate(rooms):
         prefix = ROOM_PREFIX[idx] if idx < len(ROOM_PREFIX) else str(idx + 1)
         for i in range(1, 6):
             code = "%s%d" % (prefix, i)
-            c.execute("INSERT INTO cabinets(room_id, code, name, sort) VALUES(?,?,?,?)",
-                      (room["id"], code, "", i))
+            c.execute("INSERT INTO cabinets(room_id, code, name, size, sort, floor) VALUES(?,?,?,?,?,?)",
+                      (room["id"], code, "", "half" if i == 1 else "full", i, DEFAULT_FLOOR))
             cab_ids[code] = c.execute("SELECT last_insert_rowid() id").fetchone()["id"]
 
     lib = [("冬被", "被子"), ("夏被", "被子"), ("蚕丝被", "被子"), ("四件套", "被套"),
@@ -290,23 +328,29 @@ def get_state():
     for cab in cabs:
         cab["items"] = by_cab.get(cab["id"], [])
         cab["count"] = sum(i["qty"] for i in cab["items"])
-    place = {}
+    places = {}   # 物品 -> {楼层: 位置}，每层各放各的，互不影响
     for room in rooms:
+        fl = room.get("floor") or DEFAULT_FLOOR
+        room["floor"] = fl
         room["cabinets"] = [x for x in cabs if x["room_id"] == room["id"]]
         room["count"] = sum(x["count"] for x in room["cabinets"])
         for cab in room["cabinets"]:
+            cab["floor"] = fl
             for it in cab["items"]:
-                place[it["type_id"]] = {"room": room["name"], "code": cab["code"],
-                                        "cabinet_id": cab["id"], "qty": it["qty"],
-                                        "label": "%s %s" % (room["name"], cab["code"])}
+                places.setdefault(it["type_id"], {})[fl] = {
+                    "room": room["name"], "code": cab["code"],
+                    "cabinet_id": cab["id"], "qty": it["qty"], "floor": fl,
+                    "label": "%s %s %s" % (fl, room["name"], cab["code"])}
     for t in types:
-        t["place"] = place.get(t["id"])
-    return {"rooms": rooms, "logs": logs, "types": types, "categories": cats, "cats": cats_rows, "cfg": cfg, "ver": PAGE_VER}
+        t["places"] = places.get(t["id"], {})
+        t["place"] = t["places"].get(DEFAULT_FLOOR) or next(iter(t["places"].values()), None)
+    return {"rooms": rooms, "logs": logs, "types": types, "categories": cats, "cats": cats_rows,
+            "cfg": cfg, "ver": PAGE_VER, "floors": FLOORS, "defaultFloor": DEFAULT_FLOOR}
 
 
 TABLE_COLS = {
-    "rooms": {"id", "name", "sort"},
-    "cabinets": {"id", "room_id", "code", "name", "size", "sort"},
+    "rooms": {"id", "name", "sort", "floor"},
+    "cabinets": {"id", "room_id", "code", "name", "size", "sort", "floor"},
     "types": {"id", "name", "category", "sort"},
     "cats": {"id", "name", "sort"},
     "items": {"id", "cabinet_id", "type_id", "name", "category", "qty", "note", "who",
@@ -342,6 +386,7 @@ def load_all(payload):
                 c.execute("INSERT INTO %s(%s) VALUES(%s)" % (t, ",".join(keys), ",".join("?" * len(keys))),
                           [row[k] for k in keys])
         ensure_cats(c)
+        ensure_floors(c)
         log(c, "导入", "导入", "覆盖导入了 %d 条柜内物品记录" % len(data.get("items", [])))
         c.commit()
         c.close()
@@ -425,7 +470,8 @@ class Handler(BaseHTTPRequestHandler):
             """SELECT i.id, i.qty, i.note, i.cabinet_id, i.type_id,
                       COALESCE(NULLIF(t.name,''), i.name) AS name,
                       COALESCE(NULLIF(t.category,''), i.category) AS category,
-                      cb.code, cb.name AS cab_name, r.name AS room_name
+                      cb.code, cb.name AS cab_name, r.name AS room_name,
+                      COALESCE(NULLIF(r.floor,''),'F3') AS floor
                FROM items i
                JOIN cabinets cb ON cb.id=i.cabinet_id
                JOIN rooms r ON r.id=cb.room_id
@@ -620,7 +666,8 @@ class Handler(BaseHTTPRequestHandler):
         ts = now_str()
         with _db_lock:
             c = conn()
-            cab = c.execute("SELECT cb.code, r.name FROM cabinets cb JOIN rooms r ON r.id=cb.room_id "
+            cab = c.execute("SELECT cb.code, r.name, COALESCE(NULLIF(r.floor,''),'F3') AS floor "
+                            "FROM cabinets cb JOIN rooms r ON r.id=cb.room_id "
                             "WHERE cb.id=?", (cab_id,)).fetchone()
             if not cab:
                 c.close()
@@ -643,10 +690,11 @@ class Handler(BaseHTTPRequestHandler):
             other = c.execute(
                 "SELECT i.id, i.qty, cb.code, r.name AS rn FROM items i "
                 "JOIN cabinets cb ON cb.id=i.cabinet_id JOIN rooms r ON r.id=cb.room_id "
-                "WHERE i.type_id=? AND i.cabinet_id<>?", (typ["id"], cab_id)).fetchone()
+                "WHERE i.type_id=? AND i.cabinet_id<>? AND COALESCE(NULLIF(r.floor,''),'F3')=?",
+                (typ["id"], cab_id, cab["floor"])).fetchone()
             if other:
                 c.close()
-                return self._send(409, {"error": "「%s」已经在 %s %s 里（%d 件）。一种物品只放一个柜子，"
+                return self._send(409, {"error": "本层的「%s」已经在 %s %s 里（%d 件）。同层一种物品只放一个柜子，"
                                                  "想换地方先在原柜子里取出"
                                                  % (typ["name"], other["rn"], other["code"], other["qty"])})
             exist = c.execute("SELECT * FROM items WHERE cabinet_id=? AND type_id=?",
@@ -747,6 +795,7 @@ class Handler(BaseHTTPRequestHandler):
             idx = c.execute("SELECT COUNT(*) n FROM rooms WHERE sort<? OR (sort=? AND id<=?)",
                             (room["sort"], room["sort"], room_id)).fetchone()["n"] - 1
             # 编号跟着这个房间现有的柜子走（B1、B2…就接着出 B5），而不是固定按房间顺序
+            fl = room["floor"] or DEFAULT_FLOOR
             codes = [r["code"] for r in c.execute("SELECT code FROM cabinets WHERE room_id=?", (room_id,))]
             groups = {}
             for cd in codes:
@@ -761,14 +810,15 @@ class Handler(BaseHTTPRequestHandler):
                 nums = []
             nxt = (max(nums) + 1) if nums else 1
             code = "%s%d" % (prefix, nxt)
-            while c.execute("SELECT id FROM cabinets WHERE code=?", (code,)).fetchone():
+            while c.execute("SELECT id FROM cabinets WHERE code=? AND COALESCE(NULLIF(floor,''),'F3')=?",
+                            (code, fl)).fetchone():
                 nxt += 1
                 code = "%s%d" % (prefix, nxt)
             name = (b.get("name") or "").strip()[:20]
             size = "half" if b.get("size") == "half" else "full"
-            c.execute("INSERT INTO cabinets(room_id, code, name, size, sort) VALUES(?,?,?,?,?)",
-                      (room_id, code, name, size, nxt))
-            log(c, who, "柜子", "%s 新增柜子 %s" % (room["name"], code))
+            c.execute("INSERT INTO cabinets(room_id, code, name, size, sort, floor) VALUES(?,?,?,?,?,?)",
+                      (room_id, code, name, size, nxt, fl))
+            log(c, who, "柜子", "%s %s 新增柜子 %s" % (fl, room["name"], code))
             c.commit()
             c.close()
         return self._send(200, get_state())
@@ -795,7 +845,10 @@ class Handler(BaseHTTPRequestHandler):
                 c.close()
                 return self._send(404, {"error": "柜子不存在"})
             if "code" in b:
-                dup = c.execute("SELECT id FROM cabinets WHERE code=? AND id<>?", (args[-1], cab_id)).fetchone()
+                dup = c.execute(
+                    "SELECT id FROM cabinets WHERE code=? AND id<>? "
+                    "AND COALESCE(NULLIF(floor,''),'F3')=?",
+                    (args[-1], cab_id, cab["floor"] or DEFAULT_FLOOR)).fetchone()
                 if dup:
                     c.close()
                     return self._send(400, {"error": "编号 %s 已经被别的柜子用了" % args[-1]})

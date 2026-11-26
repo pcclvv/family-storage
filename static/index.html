@@ -563,6 +563,29 @@ body.fb .cabs{display:block}
 .mini-card .ghost{flex:1;padding:12px;border-radius:12px;background:var(--bg2);font-size:14px;color:#6E6250}
 .mini-card .ok{flex:1;padding:12px;border-radius:12px;background:var(--sage);color:#fff;font-size:14px;font-weight:600}
 .foot-note{text-align:center;font-size:11.5px;color:#B3A794;margin-top:26px}
+/* ---------- 楼层切换（F2 / F3 / F4）：每层柜子布置一样，东西各放各的 ---------- */
+.floor-bar{display:flex;align-items:center;gap:8px;margin:18px 0 0;flex-wrap:wrap}
+.floor-bar .lab{font-size:11.5px;color:#A2937B;letter-spacing:1px;margin-right:2px}
+.floor-pill{
+  font-size:13px;font-weight:650;letter-spacing:.6px;color:#7A6A50;
+  background:linear-gradient(180deg,#FBF6EA,#F2E9D6);border:1px solid #E4D6BC;
+  border-radius:999px;padding:6px 15px;line-height:1;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 1px 2px rgba(70,54,34,.05);
+  transition:background .2s,color .2s,border-color .2s,box-shadow .2s,transform .12s;
+  touch-action:manipulation;
+}
+.floor-pill:active{transform:scale(.96)}
+.floor-pill.on{
+  background:linear-gradient(180deg,#6F8C78,#4E6E5F);color:#fff;border-color:#46654F;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 5px 12px -5px rgba(78,110,95,.6);
+}
+.floor-bar .fnote{margin-left:auto;font-size:11px;color:#A2937B}
+@media (max-width:600px){
+  .floor-bar{margin:14px 0 0;gap:7px}
+  .floor-pill{font-size:12.5px;padding:6px 13px}
+  .floor-bar .fnote{display:none}
+}
+
 </style>
 </head>
 <body>
@@ -593,6 +616,7 @@ body.fb .cabs{display:block}
   </div>
 </header>
 <div class="wrap">
+  <div class="floor-bar" id="floorBar"></div>
   <div class="overview">
     <div class="stat link" id="stTotalCard" onclick="openAll()" role="button" tabindex="0"><span>物品总数</span><b id="stTotal">0<i>件</i></b><em class="tap">点开看明细 ›</em></div>
     <div class="stat link" id="stTypesCard" onclick="openLib()" role="button" tabindex="0"><span>物品品类</span><b id="stTypes">0<i>种</i></b><em class="tap">点开物品库 ›</em></div>
@@ -606,7 +630,7 @@ body.fb .cabs{display:block}
     <div class="logs" id="logs"></div>
   </div>
 
-  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1141</span></div>
+  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1142</span></div>
 </div>
 
 <div class="mask" id="mask"></div>
@@ -646,7 +670,7 @@ body.fb .cabs{display:block}
         <input class="field" id="cabCode" placeholder="A1" maxlength="6">
         <button class="top-btn solid" onclick="saveCabCode()">保存</button>
       </div>
-      <div class="form-tip" style="text-align:left;margin-top:8px">编号在整个家里不能重复</div>
+      <div class="form-tip" style="text-align:left;margin-top:8px">同一楼层里编号不能重复（不同楼层可以同名）</div>
     </div>
     <div class="setting-block">
       <h4>柜子大小</h4>
@@ -654,7 +678,7 @@ body.fb .cabs{display:block}
         <button class="top-btn" id="szFull" onclick="setCabSize('full')">大柜子</button>
         <button class="top-btn" id="szHalf" onclick="setCabSize('half')">小柜子（半格）</button>
       </div>
-      <div class="form-tip" style="text-align:left;margin-top:8px">小柜子只占半格宽，适合矮柜、鞋柜；柜子数量可以随时用房间右边的「＋ 柜子」加，在下面删</div>
+      <div class="form-tip" style="text-align:left;margin-top:8px">小柜子只占半格宽，适合矮柜、鞋柜；每个房间的柜子数量是固定的（F2/F3/F4 三层布置一致）</div>
     </div>
     <div class="setting-block">
       <h4>柜门玻璃</h4>
@@ -765,7 +789,7 @@ body.fb .cabs{display:block}
 <div class="toast" id="toast"></div>
 
 <script>
-const VER = "v1141";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
+const VER = "v1142";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
 const BASE_COLOR = {"被子":"#9DC0AD","床单":"#E3C878","被套":"#DDA077","枕头":"#A9BEDB","毛毯":"#CFA6C0","其他":"#C3B9AA"};
 const PALETTE = ["#8FB0A8","#D9B36C","#B3A0C9","#C7A98B","#94AEBB","#D6A0A0","#A8B98E"];
 /* 种类来自后端，可以自己加，颜色按顺序分配 */
@@ -778,6 +802,9 @@ function catColor(name){
 
 let state = null;
 let who = localStorage.getItem("storage_who") || "";
+let curFloor = "F3";           /* 当前楼层，首页固定进 F3 */
+let floorReady = false;        /* 首次拿到数据时按服务端默认层对齐 */
+const FALLBACK_FLOORS = ["F2", "F3", "F4"];
 let currentCab = null;
 let currentTab = "items";
 let libCat = "被子";
@@ -822,6 +849,7 @@ async function load(){
   try{
     state = await api("GET","/api/state");
     if(verCheck(state.ver)) return;
+    if(!floorReady){ curFloor = state.defaultFloor || "F3"; floorReady = true; }
     lastSig = JSON.stringify(state);
     lastSyncAt = Date.now();
     render();
@@ -830,16 +858,43 @@ async function load(){
   }
 }
 
+/* ---------- 楼层 ---------- */
+function floors(){ return (state && state.floors && state.floors.length) ? state.floors : FALLBACK_FLOORS; }
+function roomsNow(){ return ((state && state.rooms) || []).filter(r=>(r.floor || "F3") === curFloor); }
+/* 某物品在当前楼层放在哪个柜子（每层各放各的） */
+function placeOf(t){
+  if(!t) return null;
+  if(t.places) return t.places[curFloor] || null;
+  return t.place || null;
+}
+function renderFloorBar(){
+  const bar = el("floorBar");
+  if(!bar) return;
+  bar.innerHTML = '<span class="lab">楼层</span>' + floors().map(f=>
+    `<button class="floor-pill ${f===curFloor?"on":""}" onclick="setFloor('${f}')">${f}</button>`
+  ).join("") + '<span class="fnote">每层柜子布置一样，东西各放各的</span>';
+}
+function setFloor(f){
+  if(f === curFloor) return;
+  curFloor = f;
+  render();
+  setTimeout(layoutRows, 60);
+  try{ window.scrollTo({top:0, behavior:"smooth"}); }catch(e){ window.scrollTo(0,0); }
+}
+
 function render(){
   if(!state) return;
   applyDoor();
   el("whoName").textContent = who || "家人";
+  const rooms = roomsNow();
   let total = 0;
-  state.rooms.forEach(r=>{ total += r.count; });
+  rooms.forEach(r=>{ total += r.count; });
   el("stTotal").innerHTML = total + "<i>件</i>";
-  el("stTypes").innerHTML = (state.types || []).length + "<i>种</i>";
+  const kindsInFloor = (state.types || []).filter(t=>placeOf(t)).length;
+  el("stTypes").innerHTML = kindsInFloor + "<i>种</i>";
+  renderFloorBar();
 
-  el("rooms").innerHTML = state.rooms.map(r=>{
+  el("rooms").innerHTML = rooms.map(r=>{
     const n = r.cabinets.length;
     const rows = splitRows(r.cabinets);
     /* 每行至少容得下 2 个大柜（4 个半格）；大柜宽度固定，不再被小柜挤宽 */
@@ -854,7 +909,6 @@ function render(){
         <h2>${esc(r.name)}</h2>
         <span class="meta">${n} 个柜子 · ${r.count} 件</span>
         <span class="rule"></span>
-        <button class="room-add" onclick="addCabinet(${r.id})">＋ 柜子</button>
       </div>
       <div class="${cls}">${rows.map(row=>row.length?
         `<div class="cab-row" data-u="${U}" data-k="${K}" style="gap:12px">${row.map(c=>cabHTML(r,c,U,K,GP)).join("")}</div>`:"").join("")}</div>
@@ -1137,8 +1191,9 @@ function renderTypeChips(){
       return `<button class="chip used" disabled>${esc(t.name)} ✓</button>`;
     }
     /* 已经在别的柜子：灰掉并写明位置，点了给提示 */
-    if(t.place){
-      return `<button class="chip used other" onclick="usedHint(${t.id})">${esc(t.name)} · 在${esc(t.place.code)}</button>`;
+    const pl = placeOf(t);
+    if(pl){
+      return `<button class="chip used other" onclick="usedHint(${t.id})">${esc(t.name)} · 在${esc(pl.code)}</button>`;
     }
     return `<button class="chip" onclick="putItem(${t.id})">${esc(t.name)}</button>`;
   }).join("");
@@ -1146,8 +1201,9 @@ function renderTypeChips(){
 
 function usedHint(typeId){
   const t = (state.types || []).find(x=>x.id===typeId);
-  if(!t || !t.place) return;
-  toast(`「${t.name}」已经在 ${t.place.label} 里（${t.place.qty} 件）。一件物品只能放一个柜子，想挪先在那里取出`);
+  const pl = placeOf(t);
+  if(!pl) return;
+  toast(`「${t.name}」本层已经在 ${pl.room} ${pl.code} 里（${pl.qty} 件）。同层一件物品只放一个柜子，想挪先在那里取出`);
 }
 
 /* 点一下＝直接放 1 件 */
@@ -1155,7 +1211,8 @@ let putting = false;
 async function putItem(typeId){
   if(!currentCab || putting) return;
   const t = (state.types || []).find(x=>x.id===typeId);
-  if(t && t.place && t.place.cabinet_id !== currentCab){
+  const pl0 = placeOf(t);
+  if(pl0 && pl0.cabinet_id !== currentCab){
     return usedHint(typeId);
   }
   putting = true;
@@ -1326,13 +1383,15 @@ function closeLib(){
 }
 function renderLib(){
   const types = ((state && state.types) || []).slice().sort((a,b)=>a.name.localeCompare(b.name,"zh-Hans-CN"));
-  el("libSub").textContent = types.length ? `共 ${types.length} 种基础物品，柜子里都从这儿选` : "还没有物品，先在下面加一个";
+  el("libSub").textContent = types.length
+    ? `共 ${types.length} 种基础物品，${curFloor} 已经放了 ${types.filter(t=>placeOf(t)).length} 种`
+    : "还没有物品，先在下面加一个";
   el("libList").innerHTML = types.length ? types.map(t=>`
     <div class="lib-row">
       <span class="cat" style="width:9px;height:9px;border-radius:50%;background:${catColor(t.category)};flex:0 0 auto"></span>
       <div class="body" onclick="openTypeEdit(${t.id})">
         <b>${esc(t.name)}</b>
-        <small>${esc(t.category)} · ${t.place ? "在 "+esc(t.place.label)+"（"+t.place.qty+" 件）" : "还没放进柜子"}</small>
+        <small>${esc(t.category)} · ${placeOf(t) ? "在 "+esc(placeOf(t).room)+" "+esc(placeOf(t).code)+"（"+placeOf(t).qty+" 件）" : curFloor+" 还没放"}</small>
       </div>
       <button class="mini-edit" onclick="openTypeEdit(${t.id})" title="改名/换分类">✎</button>
       <button class="del" onclick="delType(${t.id})" title="删除">🗑</button>
@@ -1454,7 +1513,7 @@ function renderAll(){
   if(!state) return;
   const q = (el("allQ").value || "").trim().toLowerCase();
   let parts = [], total = 0, kinds = 0;
-  state.rooms.forEach(r=>{
+  roomsNow().forEach(r=>{
     r.cabinets.forEach(c=>{
       const items = (c.items||[]).filter(i=> !q ||
         [i.name, i.category, i.note, c.code, c.name, r.name].join(" ").toLowerCase().includes(q))
@@ -1501,6 +1560,7 @@ async function doSearch(q){
   if(!q){ box.classList.remove("on"); box.innerHTML=""; return; }
   let rows = [];
   try{ rows = (await api("GET","/api/search?q="+encodeURIComponent(q))).results; }catch(e){ rows=[]; }
+  rows = rows.filter(r=>(r.floor || "F3") === curFloor);
   box.classList.add("on");
   box.innerHTML = rows.length ? rows.map(r=>`
     <button class="res-card" onclick="openCab(${r.cabinet_id})">
