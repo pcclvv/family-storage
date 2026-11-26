@@ -153,6 +153,13 @@ header.top{
 .cabs{display:flex;flex-direction:column;gap:13px}
 .cab-row{display:flex;gap:13px;align-items:stretch}
 .cab{min-width:0;display:flex;flex-direction:column}
+/* 行尾空位：虚线「＋柜子」占位卡，高度随同排柜子拉伸 */
+.cab-add{
+  border:1.5px dashed #CFC2A9;border-radius:16px;background:rgba(255,255,255,.35);
+  color:#A2937B;font-size:12.5px;font-weight:600;letter-spacing:1px;
+  display:flex;align-items:center;justify-content:center;min-height:150px;
+  transition:border-color .2s,color .2s,background .2s}
+.cab-add:active{background:rgba(255,255,255,.7);color:#7A6B54;border-color:#B3A488}
 .cabs.dense{gap:10px}
 .cabs.dense .cab-head{padding:8px 8px 0;gap:4px}
 .cabs.dense .cab-body{height:100px;margin:7px 8px 0}
@@ -523,7 +530,7 @@ button,.tab,.top-btn,.cab,.room-add,.icon-btn{touch-action:manipulation;-webkit-
     <div class="logs" id="logs"></div>
   </div>
 
-  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1131</span> <span id="kern"></span></div>
+  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1132</span> <span id="kern"></span></div>
 </div>
 
 <div class="mask" id="mask"></div>
@@ -682,7 +689,7 @@ button,.tab,.top-btn,.cab,.room-add,.icon-btn{touch-action:manipulation;-webkit-
 <div class="toast" id="toast"></div>
 
 <script>
-const VER = "v1131";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
+const VER = "v1132";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
 const BASE_COLOR = {"被子":"#9DC0AD","床单":"#E3C878","被套":"#DDA077","枕头":"#A9BEDB","毛毯":"#CFA6C0","其他":"#C3B9AA"};
 const PALETTE = ["#8FB0A8","#D9B36C","#B3A0C9","#C7A98B","#94AEBB","#D6A0A0","#A8B98E"];
 /* 种类来自后端，可以自己加，颜色按顺序分配 */
@@ -768,6 +775,16 @@ function render(){
     const rows = splitRows(r.cabinets);
     /* 每行至少容得下 2 个大柜（4 个半格）；大柜宽度固定，不再被小柜挤宽 */
     const U = Math.max(4, ...rows.map(rw=>rw.reduce((s,c)=>s+(c.size==="half"?1:2),0)));
+    /* 最后一行不满时，行尾补一块虚线「＋柜子」占位卡，让每行都铺满、柜子宽度全部统一 */
+    const filled = rows.filter(rw=>rw.length);
+    let addTile = "";
+    if(filled.length){
+      const last = filled[filled.length-1];
+      const left = U - last.reduce((s,c)=>s+(c.size==="half"?1:2),0);
+      if(left >= 1 && left <= 2){
+        addTile = `<button class="cab-add" style="flex:0 0 ${(left/U*100).toFixed(3)}%" onclick="addCabinet(${r.id})">＋ 柜子</button>`;
+      }
+    }
     const dense = Math.max(1, ...rows.map(x=>x.length)) >= 4;
     const cls = "cabs" + (dense ? " dense" : "");
     return `
@@ -779,9 +796,7 @@ function render(){
         <button class="room-add" onclick="addCabinet(${r.id})">＋ 柜子</button>
       </div>
       <div class="${cls}">${rows.map(row=>row.length?
-        (row.length===1 && row[0].size==="half"
-          ? `<div class="cab-row">${row.map(c=>cabHTML(r,c,U,false)).join("")}</div>`
-          : `<div class="cab-row">${row.map(c=>cabHTML(r,c,U,true)).join("")}</div>`):"").join("")}</div>
+        `<div class="cab-row">${row.map(c=>cabHTML(r,c,U)).join("")}${row===filled[filled.length-1]?addTile:""}</div>`:"").join("")}</div>
     </section>`;
   }).join("");
 
@@ -825,14 +840,12 @@ window.addEventListener("error", e=>{
 });
 
 /* 半透明柜门 + 柜内物品直接可读 */
-function cabHTML(room, cab, U, grow){
+function cabHTML(room, cab, U){
   const items = cab.items || [];
   const isHalf = cab.size === "half";
-  /* 宽度固定：大柜 = 2/U，小柜 = 1/U（大柜的一半），不再随同排柜子拉伸；
-     grow=true 时行内柜子按比例伸满整行，两行左右边缘对齐 */
+  /* 宽度固定：大柜 = 2/U，小柜 = 1/U（大柜的一半），同屋里所有大柜一样宽 */
   const wu = isHalf ? 1 : 2;
   const pct = (wu / U * 100).toFixed(3);
-  const flex = grow ? `flex:1 1 ${pct}%` : `flex:0 1 ${pct}%`;
   const maxShown = isHalf ? 7 : 4;
   const shown = items.slice(0, maxShown);
   const inner = items.length
@@ -848,7 +861,7 @@ function cabHTML(room, cab, U, grow){
     ? `<div class="cab-door single"><i class="handle"></i></div>`
     : `<div class="cab-door left"><i class="handle"></i></div><div class="cab-door right"><i class="handle"></i></div>`;
   return `
-    <button class="cab ${isHalf?"half":""}" style="${flex}" onclick="openCab(${cab.id})" data-cab="${cab.id}" title="${esc(cab.code)}${cab.name?" "+esc(cab.name):""}">
+    <button class="cab ${isHalf?"half":""}" style="flex:0 1 ${pct}%" onclick="openCab(${cab.id})" data-cab="${cab.id}" title="${esc(cab.code)}${cab.name?" "+esc(cab.name):""}">
       <div class="cab-head">
         <span class="cab-code">${esc(cab.code)}</span>
         ${cab.name?`<span class="cab-name">${esc(cab.name)}</span>`:""}
