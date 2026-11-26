@@ -322,8 +322,10 @@ button,.tab,.top-btn,.cab,.room-add,.icon-btn{touch-action:manipulation;-webkit-
   display:flex;flex-direction:column;overflow:hidden}
 .sheet.on{transform:translate(-50%,0)}
 @media (min-width:720px){
-  .sheet{bottom:auto;top:50%;transform:translate(-50%,-46%) scale(.98);border-radius:22px;opacity:0;max-height:86vh}
-  .sheet.on{transform:translate(-50%,-50%) scale(1);opacity:1}
+  /* 关闭的弹层必须彻底不可点：之前只是透明，仍悬浮在屏幕中央拦截点击，
+     导致「柜子设置点不动 / ✕点不动 / 点物品弹『先填物品名称』」 */
+  .sheet{bottom:auto;top:50%;transform:translate(-50%,-46%) scale(.98);border-radius:22px;opacity:0;max-height:86vh;pointer-events:none;visibility:hidden;transition:transform .32s cubic-bezier(.2,.85,.2,1),opacity .25s ease,visibility 0s .3s}
+  .sheet.on{transform:translate(-50%,-50%) scale(1);opacity:1;pointer-events:auto;visibility:visible;transition:transform .32s cubic-bezier(.2,.85,.2,1),opacity .25s ease,visibility 0s}
 }
 .sheet-grip{width:38px;height:4px;border-radius:999px;background:#E5DCCB;margin:9px auto 2px;flex:0 0 auto}
 @media (min-width:720px){.sheet-grip{display:none}}
