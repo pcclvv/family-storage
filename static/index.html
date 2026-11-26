@@ -337,13 +337,17 @@ button,.tab,.top-btn,.cab,.room-add,.icon-btn{touch-action:manipulation;-webkit-
   }
   /* 第 3 层：玻璃门（盖在文字上）。负外边距把它整体叠回柜体区域上，
      纯块级布局 + 负 margin，任何内核都支持 */
+  /* 第 3 层：玻璃门（盖在文字上）。用 relative + top 上提整层叠到柜体上，
+     并提 z-index，确保绘制顺序在文字之后（部分手机内核对 button 里的负 margin 会失效，
+     所以这里不用负 margin） */
   .cab-glass{
-    display:block;height:118px;margin:-118px 0 0;box-sizing:border-box;
+    position:relative;top:-118px;z-index:3;
+    display:block;height:118px;box-sizing:border-box;
     border-radius:9px;pointer-events:none;
     background-image:
       linear-gradient(180deg,#F1DCA8,#CBA65F 46%,#A98842),
-      linear-gradient(115deg,rgba(255,255,255,0) 8%,rgba(255,255,255,.40) 22%,rgba(255,255,255,.07) 38%,rgba(255,255,255,0) 55%,rgba(255,255,255,.24) 78%,rgba(255,255,255,0) 95%),
-      linear-gradient(160deg,rgba(255,255,255,.20) 0%,rgba(250,244,232,.09) 42%,rgba(238,226,202,.12) 72%,rgba(255,255,255,.18) 100%);
+      linear-gradient(115deg,rgba(255,255,255,0) 8%,rgba(255,255,255,.46) 22%,rgba(255,255,255,.09) 38%,rgba(255,255,255,0) 55%,rgba(255,255,255,.28) 78%,rgba(255,255,255,0) 95%),
+      linear-gradient(160deg,rgba(255,255,255,.28) 0%,rgba(250,244,232,.13) 42%,rgba(238,226,202,.17) 72%,rgba(255,255,255,.25) 100%);
     background-size:5px 26px,auto,auto;
     background-position:right 7px center,0 0,0 0;
     background-repeat:no-repeat;
@@ -355,8 +359,8 @@ button,.tab,.top-btn,.cab,.room-add,.icon-btn{touch-action:manipulation;-webkit-
     background-image:
       linear-gradient(90deg,rgba(255,255,255,0) 49%,rgba(255,255,255,.42) 49%,rgba(255,255,255,.42) 51%,rgba(255,255,255,0) 51%),
       linear-gradient(180deg,#F1DCA8,#CBA65F 46%,#A98842),
-      linear-gradient(115deg,rgba(255,255,255,0) 8%,rgba(255,255,255,.40) 22%,rgba(255,255,255,.07) 38%,rgba(255,255,255,0) 55%,rgba(255,255,255,.24) 78%,rgba(255,255,255,0) 95%),
-      linear-gradient(160deg,rgba(255,255,255,.20) 0%,rgba(250,244,232,.09) 42%,rgba(238,226,202,.12) 72%,rgba(255,255,255,.18) 100%);
+      linear-gradient(115deg,rgba(255,255,255,0) 8%,rgba(255,255,255,.46) 22%,rgba(255,255,255,.09) 38%,rgba(255,255,255,0) 55%,rgba(255,255,255,.28) 78%,rgba(255,255,255,0) 95%),
+      linear-gradient(160deg,rgba(255,255,255,.28) 0%,rgba(250,244,232,.13) 42%,rgba(238,226,202,.17) 72%,rgba(255,255,255,.25) 100%);
     background-size:2px 100%,5px 26px,auto,auto;
     background-position:center center,center center,0 0,0 0;
     background-repeat:no-repeat;
@@ -390,6 +394,9 @@ button,.tab,.top-btn,.cab,.room-add,.icon-btn{touch-action:manipulation;-webkit-
     background-size:2px 100%,5px 26px,auto;
     background-position:center center,center center,0 0;
   }
+  /* 文字在玻璃下面：轻微压暗压灰，隔着玻璃看更真实 */
+  .cab-inside .ins-line{filter:saturate(.88) brightness(.94)}
+  .cab-inside .ins-empty{filter:brightness(.94)}
   .cab-door,.handle{display:none}
   .cab.half .cab-inside{padding:4px;gap:2px}
   .cab.half .cab-body.twin .cab-glass{background-size:2px 100%,5px 26px,auto,auto}
@@ -398,6 +405,16 @@ button,.tab,.top-btn,.cab,.room-add,.icon-btn{touch-action:manipulation;-webkit-
   .cab.open-doors .cab-glass{opacity:0}
   .cab-glass{transition:opacity .22s ease}
 }
+
+/* 叠层兜底：若玻璃层没能盖住柜体（内核不支持相对位移叠层），
+   就让里面的东西呈现「雾化」效果——看起来仍然是隔着一层玻璃 */
+body.nglass .cab-inside .ins-line{filter:blur(.35px) saturate(.8) brightness(1.02);opacity:.9}
+body.nglass .cab-inside .ins-empty{filter:blur(.3px);opacity:.72}
+body.nglass .cab-body{
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.55),
+             inset 0 30px 34px -26px rgba(255,255,255,.4),
+             inset 0 -12px 20px -14px rgba(70,54,34,.35),
+             0 8px 14px -9px rgba(84,64,40,.45)}
 
 /* 简洁模式（内核不认宽度设置时的兑底）：柜子取消多列，全宽堆叠，任何内核都不会乱 */
 body.fb .cabs .cab-row{display:block}
@@ -589,7 +606,7 @@ body.fb .cabs{display:block}
     <div class="logs" id="logs"></div>
   </div>
 
-  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1140</span></div>
+  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1141</span></div>
 </div>
 
 <div class="mask" id="mask"></div>
@@ -748,7 +765,7 @@ body.fb .cabs{display:block}
 <div class="toast" id="toast"></div>
 
 <script>
-const VER = "v1140";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
+const VER = "v1141";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
 const BASE_COLOR = {"被子":"#9DC0AD","床单":"#E3C878","被套":"#DDA077","枕头":"#A9BEDB","毛毯":"#CFA6C0","其他":"#C3B9AA"};
 const PALETTE = ["#8FB0A8","#D9B36C","#B3A0C9","#C7A98B","#94AEBB","#D6A0A0","#A8B98E"];
 /* 种类来自后端，可以自己加，颜色按顺序分配 */
@@ -930,6 +947,28 @@ function layoutRows(){
   if(document.body.className.indexOf("fb") >= 0 !== broken){
     document.body.className = broken ? document.body.className + " fb" : document.body.className.replace(/\s*\bfb\b/g, "");
   }
+  checkGlass();
+}
+/* 自检玻璃层有没有真的盖在柜体上（部分内核不支持相对位移叠层）：
+   没盖住 → 给 body 加 nglass，改用「雾化文字」的画法，看上去仍是隔着玻璃 */
+function checkGlass(){
+  let bad = false;
+  try{
+    const bodies = document.querySelectorAll(".cab-body");
+    for(let i=0; i<bodies.length && i<6; i++){
+      const b = bodies[i];
+      const g = b.querySelector(".cab-glass");
+      if(!g) continue;
+      if(getComputedStyle(g).display === "none") continue;
+      const rb = b.getBoundingClientRect(), rg = g.getBoundingClientRect();
+      if(rg.height < rb.height * 0.6 || Math.abs(rg.top - rb.top) > 6 || Math.abs(rg.width - rb.width) > 6){
+        bad = true; break;
+      }
+    }
+  }catch(_){ bad = false; }
+  const has = document.body.className.indexOf("nglass") >= 0;
+  if(bad && !has) document.body.className += " nglass";
+  if(!bad && has) document.body.className = document.body.className.replace(/\s*\bnglass\b/g, "");
 }
 window.addEventListener("resize", layoutRows);
 window.addEventListener("orientationchange", function(){ setTimeout(layoutRows, 150); });
