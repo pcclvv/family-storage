@@ -25,7 +25,7 @@ CATEGORIES = ["被子", "床单", "被套", "枕头", "毛毯", "其他"]   # �
 ROOM_PREFIX = ["A", "B", "C", "D", "E", "F", "G", "H"]
 FLOORS = ["F2", "F3", "F4"]     # 楼层：每层房间与柜子结构相同，柜内物品各自独立
 DEFAULT_FLOOR = "F3"            # 首页默认进 F3
-PAGE_VER = "v1145"   # 页面版本号，前端拿它对比，不一致就强制重载（防手机缓存旧页面）
+PAGE_VER = "v1146"   # 页面版本号，前端拿它对比，不一致就强制重载（防手机缓存旧页面）
 _db_lock = threading.Lock()
 
 
@@ -206,8 +206,8 @@ def migrate(c):
 
 
 def ensure_floors(c):
-    """楼层结构：F2 / F3 / F4 每层的房间、柜子（数量/编号/大小/排序）完全一致，
-       各自独立的柜内物品与物品库（名称/分类可以各层单独改）。缺的照参考层镜像一份"""
+    """楼层结构：F2 / F3 / F4 每层的房间、柜子（数量/编号/大小/排序）完全一致。
+       物品库与柜内物品各层独立，新楼层从空白开始，不复制别的层"""
     have = {r["floor"] or DEFAULT_FLOOR for r in c.execute("SELECT DISTINCT floor FROM rooms")}
     if not have:
         return
@@ -224,32 +224,7 @@ def ensure_floors(c):
                 c.execute("INSERT INTO cabinets(room_id, code, name, size, sort, floor) "
                           "VALUES(?,?,?,?,?,?)",
                           (new_room, cab["code"], cab["name"], cab["size"], cab["sort"], fl))
-        log(c, "系统", "楼层", "新增楼层 %s：房间和柜子布置与 %s 一致，物品单独存放" % (fl, tpl))
-    ensure_floor_types(c, tpl)
-
-
-def ensure_floor_types(c, tpl=DEFAULT_FLOOR):
-    """每层都要有自己的物品库：某层还没建过物品，就照参考层的名目复制一份（不带使用记录）"""
-    have = {r["floor"] or DEFAULT_FLOOR for r in c.execute("SELECT DISTINCT floor FROM types")}
-    if tpl not in have:
-        tpl = sorted(have)[0] if have else None
-    if not tpl:
-        return
-    tpl_types = [dict(r) for r in
-                 c.execute("SELECT * FROM types WHERE COALESCE(NULLIF(floor,''),'F3')=? ORDER BY sort, id",
-                           (tpl,))]
-    for fl in FLOORS:
-        if fl in have and fl != tpl:
-            continue
-        if fl == tpl:
-            continue
-        if not tpl_types:
-            continue
-        for t in tpl_types:
-            c.execute("INSERT INTO types(name, category, sort, floor) VALUES(?,?,?,?)",
-                      (t["name"], t["category"], t["sort"], fl))
-        log(c, "系统", "楼层", "楼层 %s 建好了自己的物品库（%d 种，和 %s 同样名目，各自增删）"
-            % (fl, len(tpl_types), tpl))
+        log(c, "系统", "楼层", "新增楼层 %s：房间和柜子布置与 %s 一致，物品库和柜内物品各自从空开始" % (fl, tpl))
 
 
 def ensure_cats(c):
