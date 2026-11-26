@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """家庭储物管家 · 接口自测"""
+import glob
 import json, os, subprocess, sys, time, shutil, urllib.request, urllib.error, urllib.parse
 
-BASE = os.path.dirname(os.path.abspath(__file__))
+BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # 项目根目录
 PORT = 3399
 HOST = "http://127.0.0.1:%d" % PORT
 q = urllib.parse.quote
@@ -38,6 +39,10 @@ def start():
     out = p.stdout.read(2000).decode(errors="ignore")
     raise SystemExit("服务没起来：" + out)
 
+# 每轮从全新种子库开始，跑完即清理，可重复执行
+for _f in glob.glob(os.path.join(BASE, "data", "storage.db*")):
+    os.remove(_f)
+
 print("== 启动 ==")
 p = start()
 try:
@@ -50,13 +55,17 @@ try:
     check("两个房间", len(s["rooms"]) == 2, s.get("rooms"))
     check("共 10 个柜子", sum(len(r["cabinets"]) for r in s["rooms"]) == 10)
     total = sum(c["count"] for r in s["rooms"] for c in r["cabinets"])
-    check("总件数 10", total == 10, total)
-    check("种类含空调被", "空调被" in s["categories"], s["categories"])
+    check("总件数 15（种子）", total == 15, total)
+    check("预置种类齐全", "被子" in s["categories"] and any(t["name"]=="冬被" for t in s["types"]), s["categories"])
     check("种类带 id", all("id" in c for c in s["cats"]))
 
     # 找一个空柜子
     empty = [c for r in s["rooms"] for c in r["cabinets"] if not c["items"]][0]
-    tid = next(t["id"] for t in s["types"] if t["name"] == "冬被")
+    old = [t for t in s["types"] if t["name"] == "自测凉席"]
+    if old: call("DELETE", "/api/types/%d?who=%s" % (old[0]["id"], q("自测")))
+    code, st0 = call("POST", "/api/types", {"name": "自测凉席", "category": "其他", "who": "自测"})
+    check("新建测试物品成功", code == 200)
+    tid = next(t["id"] for t in st0["types"] if t["name"] == "自测凉席")
 
     print("== 柜内物品 ==")
     code, s2 = call("POST", "/api/items", {"cabinetId": empty["id"], "typeId": tid, "qty": 1, "who": "自测"})

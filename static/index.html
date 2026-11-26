@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="icon" href="data:,">
 <meta name="theme-color" content="#F5F1E8">
 <title>展展家里的柜子 · 家庭储物管家</title>
 <style>
@@ -215,8 +216,8 @@ header.top{
     rgba(255,255,255,var(--dg4,.24)) 100%);
   border:1px solid rgba(255,255,255,.78);
   box-shadow:inset 0 0 0 2px rgba(122,96,60,.14),inset 0 1px 0 rgba(255,255,255,.75),0 1px 4px rgba(110,86,54,.16);
-  backdrop-filter:saturate(112%) blur(var(--dgBlur,.4px));
-  -webkit-backdrop-filter:saturate(112%) blur(var(--dgBlur,.4px));
+  backdrop-filter:saturate(112%);
+  -webkit-backdrop-filter:saturate(112%);
   transition:transform .42s cubic-bezier(.2,.85,.2,1),box-shadow .3s,background .3s;
   overflow:hidden;
 }
@@ -250,6 +251,7 @@ body[data-door="solid"]{--dg1:.97;--dg2:.95;--dg3:.94;--dg4:.96;--dgBlur:6px}
 .cab.open-doors .cab-door.left{transform:rotateY(-62deg)}
 .cab.open-doors .cab-door.right{transform:rotateY(62deg)}
 .cab.open-doors .cab-door.single{transform:rotateY(-55deg)}
+button,.tab,.top-btn,.cab,.room-add,.icon-btn{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .handle{position:absolute;top:50%;width:4px;height:24px;border-radius:3px;
   background:linear-gradient(180deg,#F1DCA8,#CBA65F 46%,#A98842);
   box-shadow:0 1px 2px rgba(80,60,30,.4),inset 0 1px 0 rgba(255,255,255,.55);
@@ -732,6 +734,11 @@ function splitRows(cabs){
   return [r1, r2];
 }
 
+/* 全局错误提示：万一手机上出错，能看到是哪里出问题 */
+window.addEventListener("error", e=>{
+  try{ toast("页面出错了：" + (e.message||"").slice(0,60)); }catch(_){}
+});
+
 /* 半透明柜门 + 柜内物品直接可读 */
 function cabHTML(room, cab, U){
   const items = cab.items || [];
@@ -802,13 +809,12 @@ function openCab(id){
     el("sheet").classList.add("on");
     el("sheet").setAttribute("aria-hidden","false");
   };
-  /* 手机上也能看到柜门打开的效果 */
+  /* 弹层立即打开，开门动画同步进行，手机上不延迟不卡顿 */
+  go();
   const card = document.querySelector('.cab[data-cab="'+id+'"]');
   if(card && !window.matchMedia("(prefers-reduced-motion: reduce)").matches){
     card.classList.add("open-doors");
-    setTimeout(()=>{ go(); card.classList.remove("open-doors"); }, 340);
-  }else{
-    go();
+    setTimeout(()=>card.classList.remove("open-doors"), 500);
   }
 }
 function closeSheet(){
