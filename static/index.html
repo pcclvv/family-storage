@@ -630,7 +630,7 @@ body.fb .cabs{display:block}
     <div class="logs" id="logs"></div>
   </div>
 
-  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1142</span></div>
+  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1143</span></div>
 </div>
 
 <div class="mask" id="mask"></div>
@@ -696,7 +696,7 @@ body.fb .cabs{display:block}
     </div>
   </div>
   <div class="form" id="addForm">
-    <div class="form-label">点一下，直接放进这个柜子（1 件）</div>
+    <div class="form-label" id="addFormLabel">点一下，直接放进这个柜子（1 件）</div>
     <div class="chips wrap" id="typeChips"></div>
     <div class="form-tip" style="text-align:left">标 ✓ 的已经在这个柜子里了；要多件点物品旁的 ＋；这里没有的，去「物品库」加一种</div>
   </div>
@@ -789,7 +789,7 @@ body.fb .cabs{display:block}
 <div class="toast" id="toast"></div>
 
 <script>
-const VER = "v1142";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
+const VER = "v1143";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
 const BASE_COLOR = {"被子":"#9DC0AD","床单":"#E3C878","被套":"#DDA077","枕头":"#A9BEDB","毛毯":"#CFA6C0","其他":"#C3B9AA"};
 const PALETTE = ["#8FB0A8","#D9B36C","#B3A0C9","#C7A98B","#94AEBB","#D6A0A0","#A8B98E"];
 /* 种类来自后端，可以自己加，颜色按顺序分配 */
@@ -861,6 +861,13 @@ async function load(){
 /* ---------- 楼层 ---------- */
 function floors(){ return (state && state.floors && state.floors.length) ? state.floors : FALLBACK_FLOORS; }
 function roomsNow(){ return ((state && state.rooms) || []).filter(r=>(r.floor || "F3") === curFloor); }
+/* 物品库也按楼层分开：只看当前楼层的那一份 */
+function typesNow(){ return ((state && state.types) || []).filter(t=>(t.floor || "F3") === curFloor); }
+function cabFloor(id){
+  const hit = findCab(id);
+  if(hit && hit.room) return hit.room.floor || "F3";
+  return curFloor;
+}
 /* 某物品在当前楼层放在哪个柜子（每层各放各的） */
 function placeOf(t){
   if(!t) return null;
@@ -1178,9 +1185,11 @@ function refreshSheet(){
 }
 
 function renderTypeChips(){
-  const types = (state.types || []).slice().sort((a,b)=>a.name.localeCompare(b.name,"zh-Hans-CN"));
+  const types = typesNow().slice().sort((a,b)=>a.name.localeCompare(b.name,"zh-Hans-CN"));
+  if(el("addFormLabel")) el("addFormLabel").textContent =
+    `点一下，直接放进这个柜子（1 件）· 只用 ${curFloor} 的物品库`;
   if(!types.length){
-    el("typeChips").innerHTML = `<span class="chip" style="cursor:default">物品库还空着，点右上角「物品库」加一种</span>`;
+    el("typeChips").innerHTML = `<span class="chip" style="cursor:default">${curFloor} 的物品库还空着，点右上角「物品库」加一种</span>`;
     return;
   }
   const hit = findCab(currentCab);
@@ -1300,8 +1309,9 @@ async function saveEdit(){
     if(edCtx.kind === "item"){
       let typeId = edCtx.typeId;
       if(needType && !typeId){          // 老数据没有基础物品：补一条，再挂上去
-        state = await api("POST","/api/types",{name, category:cat, who});
-        const created = (state.types||[]).find(x=>x.name === name);
+        const fl = edCtx.cabId ? cabFloor(edCtx.cabId) : curFloor;
+        state = await api("POST","/api/types",{name, category:cat, floor:fl, who});
+        const created = (state.types||[]).find(x=>x.name === name && (x.floor||"F3") === fl);
         typeId = created ? created.id : 0;
       }
       const qty = Math.max(1, Math.min(999, parseInt(el("edQty").value||"1",10) || 1));
@@ -1382,10 +1392,10 @@ function closeLib(){
   el("mask").classList.remove("on");
 }
 function renderLib(){
-  const types = ((state && state.types) || []).slice().sort((a,b)=>a.name.localeCompare(b.name,"zh-Hans-CN"));
+  const types = typesNow().slice().sort((a,b)=>a.name.localeCompare(b.name,"zh-Hans-CN"));
   el("libSub").textContent = types.length
-    ? `共 ${types.length} 种基础物品，${curFloor} 已经放了 ${types.filter(t=>placeOf(t)).length} 种`
-    : "还没有物品，先在下面加一个";
+    ? `${curFloor} 的物品库共 ${types.length} 种，已经放了 ${types.filter(t=>placeOf(t)).length} 种（其他楼层各有一份自己的）`
+    : `${curFloor} 的物品库还没有东西，先在下面加一个`;
   el("libList").innerHTML = types.length ? types.map(t=>`
     <div class="lib-row">
       <span class="cat" style="width:9px;height:9px;border-radius:50%;background:${catColor(t.category)};flex:0 0 auto"></span>
@@ -1413,8 +1423,8 @@ async function addType(){
   const name = el("libName").value.trim();
   if(!name){ toast("先填物品名称"); el("libName").focus(); return; }
   try{
-    state = await api("POST","/api/types",{name, category: libCat, who});
-    el("libName").value = ""; render(); toast("已加入物品库");
+    state = await api("POST","/api/types",{name, category: libCat, floor: curFloor, who});
+    el("libName").value = ""; render(); toast(`已加进 ${curFloor} 的物品库`);
   }catch(e){ toast(e.message || "添加失败"); }
 }
 async function addCat(){

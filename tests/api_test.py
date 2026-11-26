@@ -145,22 +145,48 @@ try:
         check("F2 与 F3 柜子编号一致", c2 == c3, (c2, c3))
         n2 = sum(len(c["items"]) for c in f2_rooms[0]["cabinets"])
         check("F2 初始为空（物品独立）", n2 == 0, n2)
-        # F3 已有物品也能放进 F2（每层各放各的）
-        t3 = [t for t in sf["types"] if t["places"].get("F3")]
-        if t3:
+        # 物品库按楼层分开：每层一份，互不通用
+        t2all = [t for t in sf["types"] if (t.get("floor") or "F3") == "F2"]
+        t3all = [t for t in sf["types"] if (t.get("floor") or "F3") == "F3"]
+        names2 = {t["name"] for t in t2all}
+        check("F2 物品库照 F3 镜像", len(t2all) >= 8 and {"冬被", "夏被"} <= names2,
+              (len(t2all), sorted(names2)[:4]))
+        t3placed = [t for t in t3all if t["places"].get("F3")]
+        if t3placed and len(f2_rooms[0]["cabinets"]) > 1:
             fid = f2_rooms[0]["cabinets"][1]["id"]
-            code, sa = call("POST", "/api/items", {"cabinetId": fid, "typeId": t3[0]["id"], "qty": 1, "who": "自测"})
-            check("同层已占也能放到别的楼层", code == 200, sa)
-            if code == 200:
-                pl = [t for t in sa["types"] if t["id"] == t3[0]["id"]][0]
-                check("F2 位置单独记录", pl["places"].get("F2") and pl["places"].get("F3"),
-                      pl.get("places"))
-                # 清理：把 F2 的这件取出，还原状态
-                iid = [i["id"] for r2 in sa["rooms"] if r2["floor"] == "F2"
-                       for c2 in r2["cabinets"] for i in c2["items"]
-                       if i["type_id"] == t3[0]["id"]]
-                if iid:
-                    call("DELETE", "/api/items/%d?who=%s" % (iid[0], q("自测")))
+            code, sa = call("POST", "/api/items", {"cabinetId": fid, "typeId": t3placed[0]["id"],
+                                                   "qty": 1, "who": "自测"})
+            check("跨楼层物品被拒", code == 400, sa)
+            # 放 F2 自己的同名物品：可以放，且不影响 F3
+            same = [t for t in t2all if t["name"] == t3placed[0]["name"]]
+            if same:
+                code, sa = call("POST", "/api/items", {"cabinetId": fid, "typeId": same[0]["id"],
+                                                       "qty": 1, "who": "自测"})
+                check("用本层物品放柜子", code == 200, sa)
+                if code == 200:
+                    pl = [t for t in sa["types"] if t["id"] == same[0]["id"]][0]
+                    check("F2 位置单独记录", pl["places"].get("F2"), pl.get("places"))
+                    p3 = [t for t in sa["types"] if t["name"] == same[0]["name"]
+                          and (t.get("floor") or "F3") == "F3"][0]
+                    check("F3 同名物品位置不受影响", p3["places"].get("F3"), p3.get("places"))
+                    iid = [i["id"] for r2 in sa["rooms"] if r2["floor"] == "F2"
+                           for c2 in r2["cabinets"] for i in c2["items"]
+                           if i["type_id"] == same[0]["id"]]
+                    if iid:
+                        call("DELETE", "/api/items/%d?who=%s" % (iid[0], q("自测")))
+        # 物品库增删也按层独立
+        code, sx = call("POST", "/api/types", {"name": "自测电热毯", "category": "毛毯",
+                                               "floor": "F2", "who": "自测"})
+        check("F2 新增物品", code == 200)
+        code, _ = call("POST", "/api/types", {"name": "自测电热毯", "category": "毛毯", "floor": "F2"})
+        check("F2 重名物品被拒", code == 400)
+        code, sy = call("POST", "/api/types", {"name": "自测电热毯", "category": "毛毯",
+                                               "floor": "F3", "who": "自测"})
+        check("F3 可有同名物品", code == 200)
+        for body_ in (sx, sy):
+            for t_ in body_.get("types", []):
+                if t_["name"] == "自测电热毯":
+                    call("DELETE", "/api/types/%d?who=%s" % (t_["id"], q("自测")))
 
     print("== 搜索 ==")
     code, res = call("GET", "/api/search?q=" + q("冬被"))

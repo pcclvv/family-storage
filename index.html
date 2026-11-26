@@ -3,8 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="icon" href="data:,">
 <meta name="theme-color" content="#F5F1E8">
-<title>展展家里的柜子 · 家庭储物管家</title>
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>展展家的柜子 · 家庭储物管家</title>
 <style>
 :root{
   --bg:#F5F1E8;
@@ -40,7 +44,7 @@ body{
 }
 button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
 input,select,textarea{font-family:inherit;color:inherit}
-.wrap{max-width:1120px;margin:0 auto;padding:0 18px 90px}
+.wrap{max-width:920px;margin:0 auto;padding:0 18px 90px}
 
 /* ---------- 顶栏 ---------- */
 header.top{
@@ -50,7 +54,7 @@ header.top{
   background:rgba(245,241,232,.82);
   border-bottom:1px solid rgba(231,223,209,.7);
 }
-.top-in{max-width:1120px;margin:0 auto;padding:14px 18px;display:flex;align-items:center;gap:10px}
+.top-in{max-width:920px;margin:0 auto;padding:14px 18px;display:flex;align-items:center;gap:10px}
 .brand{display:flex;align-items:center;gap:10px;min-width:0}
 .brand-mark{
   width:38px;height:38px;border-radius:12px;flex:0 0 auto;
@@ -120,11 +124,18 @@ header.top{
 .searchbar input:focus{border-color:#C9D9D0;box-shadow:0 0 0 4px rgba(94,139,122,.10)}
 .searchbar .ico{position:absolute;left:15px;top:50%;transform:translateY(-50%);opacity:.42}
 .searchbar .ico svg{width:17px;height:17px;stroke:var(--ink);fill:none;stroke-width:1.9;stroke-linecap:round}
-.searchbar.mini{margin:14px 0 0}
-.searchbar.mini input{padding:9px 40px 9px 36px;font-size:13px;border-radius:12px}
-.searchbar.mini .ico{left:12px}
-.searchbar.mini .ico svg{width:15px;height:15px}
-.searchbar.mini .search-clear{right:6px;width:26px;height:26px;font-size:12px}
+/* 顶栏小搜索框：紧跟在刷新按钮旁边 */
+.head-search{position:relative;margin:0;flex:0 1 200px;min-width:130px}
+.head-search input{padding:8px 26px 8px 30px;font-size:12.5px;border-radius:999px}
+.head-search .ico{left:10px}
+.head-search .ico svg{width:14px;height:14px}
+.head-search .search-clear{right:4px;width:22px;height:22px;font-size:11px}
+@media (max-width:600px){
+  .brand{flex:0 1 auto}
+  .brand h1{font-size:14px;max-width:30vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .top-in{flex-wrap:nowrap;padding:12px 14px;gap:8px}
+  .head-search{flex:1 1 110px;min-width:88px}
+}
 .search-clear{position:absolute;right:10px;top:50%;transform:translateY(-50%);
   width:28px;height:28px;border-radius:50%;display:none;place-items:center;
   background:var(--bg2);color:var(--muted);font-size:14px}
@@ -142,15 +153,16 @@ header.top{
 
 /* 不管几个柜子，都排两行：列数 = 柜子数/2 向上取整；宽度自动均分 */
 .cabs{display:flex;flex-direction:column;gap:13px}
-.cab-row{display:flex;gap:13px;align-items:stretch}
-.cab{flex:2 1 0%;min-width:0}
-.cab.half{flex:1 1 0%}
+/* 不满的行：剩余空白均匀分到两边和柜子之间（居中、对称，不拉伸柜子）；
+   柜宽和间隙全部用纯百分比（部分手机内核不支持 calc/var，会丢弃宽度声明导致按内容宽度乱排） */
+.cab-row{display:flex;align-items:stretch;justify-content:space-evenly}
+.cab{min-width:0;display:flex;flex-direction:column}
 .cabs.dense{gap:10px}
 .cabs.dense .cab-head{padding:8px 8px 0;gap:4px}
 .cabs.dense .cab-body{height:100px;margin:7px 8px 0}
 .cabs.dense .cab-foot{padding:8px 9px 9px;font-size:10.5px}
 .cabs.dense .ins-line{font-size:10.5px;padding:2px 5px}
-@media (max-width:560px){.cabs{gap:11px}.cab-row{gap:11px}}
+@media (max-width:560px){.cabs{gap:11px}}
 
 /* ---------- 柜子卡片：木柜 + 半透明玻璃门 ---------- */
 .cab{
@@ -165,18 +177,25 @@ header.top{
   box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 12px 26px rgba(70,54,34,.13),0 3px 8px rgba(70,54,34,.07)}
 .cab:active{transform:scale(.985)}
 .cab-head{display:flex;align-items:center;gap:6px;padding:10px 11px 0}
+/* 编号与角标固定高度，大柜/小柜完全一致，保证顶部对齐 */
 .cab-code{font-size:11.5px;font-weight:700;letter-spacing:.7px;color:#7A6A50;
-  background:linear-gradient(180deg,#F7EDDA,#EFE1C7);border:1px solid #E4D6BC;border-radius:7px;padding:2px 7px;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.85)}
+  background:linear-gradient(180deg,#F7EDDA,#EFE1C7);border:1px solid #E4D6BC;border-radius:7px;
+  height:20px;display:inline-flex;align-items:center;padding:0 7px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.85);flex:0 0 auto}
 .cab-name{font-size:11px;color:#9A8E7C;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cab-count{margin-left:auto;font-size:11px;color:#8A7E6B;background:rgba(255,255,255,.75);
-  border-radius:999px;padding:2px 7px;border:1px solid #EADFCC;white-space:nowrap}
+  border-radius:999px;height:20px;display:inline-flex;align-items:center;padding:0 7px;border:1px solid #EADFCC;white-space:nowrap;flex:0 0 auto}
 .cab-count.hot{background:var(--sage-soft);border-color:#CFE0D7;color:#3F6B5A;font-weight:600}
 
-.cab-body{position:relative;height:118px;margin:9px 11px 0;perspective:700px;
+/* 小柜（半格）：头部/角标/底部与大柜完全一致，只有编号和角标字号缩小以适应窄卡 */
+.cab.half .cab-head{padding:10px 6px 0;gap:3px}
+.cab.half .cab-code{font-size:9.5px;letter-spacing:.3px;padding:0 5px}
+.cab.half .cab-count{font-size:9.5px;padding:0 5px}
+
+.cab-body{position:relative;height:118px;margin:9px 11px 0;
   border-radius:9px;box-shadow:0 8px 14px -9px rgba(84,64,40,.45)}
 .cab-frame{
-  position:absolute;inset:0;border-radius:9px;overflow:hidden;
+  position:absolute;top:0;right:0;bottom:0;left:0;border-radius:9px;overflow:hidden;
   background:linear-gradient(160deg,var(--wood-1),var(--wood-2) 55%,var(--wood-3));
   box-shadow:inset 0 1px 0 rgba(255,255,255,.6),inset 0 -3px 8px rgba(120,92,55,.18);
 }
@@ -185,19 +204,23 @@ header.top{
   background:linear-gradient(180deg,rgba(255,255,255,.55),rgba(255,255,255,0));
 }
 .cab-frame::after{
-  content:"";position:absolute;inset:0;opacity:.24;
+  content:"";position:absolute;top:0;right:0;bottom:0;left:0;opacity:.24;
   background:repeating-linear-gradient(90deg,rgba(150,120,76,.20) 0 1px,transparent 1px 7px);
 }
 .cab-inside{
-  position:absolute;inset:6px;border-radius:6px;background:#75634F;
-  box-shadow:inset 0 4px 12px rgba(0,0,0,.30);
+  position:absolute;top:6px;right:6px;bottom:6px;left:6px;border-radius:6px;
+  background:linear-gradient(180deg,#5B4B3A,#6B5844 45%,#7A6650);
+  box-shadow:inset 0 9px 16px rgba(0,0,0,.42),inset 0 -6px 12px rgba(0,0,0,.26),
+             inset 0 0 0 1px rgba(0,0,0,.16);
   display:flex;flex-direction:column;justify-content:flex-end;gap:3px;padding:5px;
   overflow:hidden;z-index:1;
 }
+/* 里面的东西：稍微暗一点、带点柔和阴影，看起来是放在柜子里（而不是浮在玻璃上） */
+.cab-inside .ins-line,.cab-inside .ins-empty{filter:saturate(.96) brightness(.97)}
 .ins-line{
   height:17px;border-radius:4px;display:flex;align-items:center;gap:4px;padding:0 5px;
   font-size:9.5px;color:#332B22;white-space:nowrap;overflow:hidden;
-  box-shadow:0 1px 1px rgba(0,0,0,.12);
+  box-shadow:0 1px 1px rgba(0,0,0,.14),0 3px 7px rgba(0,0,0,.22);
 }
 .ins-line b{font-weight:700;overflow:hidden;text-overflow:ellipsis}
 .ins-line em{font-style:normal;opacity:.62;font-size:8.5px;margin-left:auto;padding-left:3px}
@@ -205,23 +228,39 @@ header.top{
 .ins-empty{font-size:9.5px;color:rgba(255,246,230,.66);text-align:center;margin:auto}
 .cab:hover .ins-line{filter:saturate(106%) brightness(1.03)}
 
-/* 半透明柜门：透过门能看清里面的东西 */
+/* 玻璃柜门：透明 + 斜向反光，能隔着门看到里面的东西；
+   透明度在「柜子设置 → 柜门玻璃」里调，全家人同步。
+   故意不用 backdrop-filter 和 CSS 变量(var)：部分手机内核（微信/QQ 内置 X5 等）
+   会把 backdrop-filter 渲染成不透明、对 var() 支持不全，导致玻璃效果在手机上消失 */
 .cab-door{
   position:absolute;top:0;bottom:0;width:50%;z-index:2;
-  background:linear-gradient(150deg,rgba(255,253,248,.32),rgba(233,221,199,.18) 58%,rgba(208,190,160,.26));
-  border:1px solid rgba(255,255,255,.5);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.62),inset 0 0 12px rgba(255,255,255,.22),0 1px 4px rgba(110,86,54,.12);
-  backdrop-filter:blur(1px) saturate(110%);
-  -webkit-backdrop-filter:blur(1px) saturate(110%);
-  transition:transform .5s cubic-bezier(.2,.85,.2,1),box-shadow .3s,background .3s;
+  background:linear-gradient(160deg,
+    rgba(255,255,255,.42) 0%,
+    rgba(250,244,232,.26) 42%,
+    rgba(238,226,202,.30) 72%,
+    rgba(255,255,255,.38) 100%);
+  border:1px solid rgba(255,255,255,.78);
+  box-shadow:inset 0 0 0 2px rgba(122,96,60,.14),inset 0 1px 0 rgba(255,255,255,.75),0 1px 4px rgba(110,86,54,.16);
+  transition:transform .42s cubic-bezier(.2,.85,.2,1),box-shadow .3s,background .3s;
   overflow:hidden;
 }
-.cab-door::before{ /* 玻璃斜向高光 */
-  content:"";position:absolute;inset:0;
-  background:linear-gradient(115deg,rgba(255,255,255,.30) 0%,rgba(255,255,255,.05) 36%,rgba(255,255,255,0) 52%,rgba(255,255,255,.13) 100%);
+.cab-door::before{ /* 斜向玻璃反光带：白色高光扫过，玻璃感的关键 */
+  content:"";position:absolute;top:0;right:0;bottom:0;left:0;
+  background:linear-gradient(115deg,
+    rgba(255,255,255,0) 8%,
+    rgba(255,255,255,.55) 22%,
+    rgba(255,255,255,.10) 38%,
+    rgba(255,255,255,0) 55%,
+    rgba(255,255,255,.34) 78%,
+    rgba(255,255,255,0) 95%);
 }
+body[data-door="clear"] .cab-door{background:linear-gradient(160deg,
+    rgba(255,255,255,.16) 0%,rgba(250,244,232,.07) 42%,rgba(238,226,202,.10) 72%,rgba(255,255,255,.14) 100%)}
+body[data-door="solid"] .cab-door{background:linear-gradient(160deg,
+    rgba(253,250,243,.97) 0%,rgba(250,244,232,.95) 42%,rgba(238,226,202,.94) 72%,rgba(253,250,243,.96) 100%)}
+body[data-door="solid"] .cab-door::before{opacity:0}
 .cab-door::after{ /* 门框 */
-  content:"";position:absolute;inset:4px;border:1px solid rgba(255,255,255,.4);border-radius:4px;
+  content:"";position:absolute;top:4px;right:4px;bottom:4px;left:4px;border:1px solid rgba(255,255,255,.4);border-radius:4px;
 }
 .cab-door.left{left:0;transform-origin:left center;border-radius:9px 3px 3px 9px}
 .cab-door.right{right:0;transform-origin:right center;border-radius:3px 9px 9px 3px}
@@ -230,6 +269,11 @@ header.top{
 .cab:hover .cab-door.left{transform:rotateY(-17deg);box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 6px 16px rgba(90,70,42,.16)}
 .cab:hover .cab-door.right{transform:rotateY(17deg);box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 6px 16px rgba(90,70,42,.16)}
 .cab:hover .cab-door.single{transform:rotateY(-14deg);box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 8px 20px rgba(90,70,42,.18)}
+/* 手机上点柜子：门先弹开再进明细 */
+.cab.open-doors .cab-door.left{transform:rotateY(-62deg)}
+.cab.open-doors .cab-door.right{transform:rotateY(62deg)}
+.cab.open-doors .cab-door.single{transform:rotateY(-55deg)}
+button,.tab,.top-btn,.cab,.room-add,.icon-btn{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .handle{position:absolute;top:50%;width:4px;height:24px;border-radius:3px;
   background:linear-gradient(180deg,#F1DCA8,#CBA65F 46%,#A98842);
   box-shadow:0 1px 2px rgba(80,60,30,.4),inset 0 1px 0 rgba(255,255,255,.55);
@@ -237,28 +281,146 @@ header.top{
 .cab-door.left .handle{right:6px}
 .cab-door.right .handle{left:6px}
 .cab-door.single .handle{right:7px;height:27px;width:5px}
+/* 手机端专用：玻璃门盖在文字上层（桌面端用真实 3D 柜门，不需要这层） */
+.cab-glass{display:none}
 
 .cab-foot{padding:9px 11px 11px;font-size:11.5px;color:#8A7E6B;line-height:1.35;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cab-foot b{color:#5C4E3B;font-weight:650}
 .cab-foot .empty{color:#B4A794}
 
-/* 小柜子（半格）：窄柜，单门，内部只留彩色叠放条 */
-.cab.half{border-radius:14px}
-.cab.half .cab-head{padding:8px 8px 0;gap:4px}
-.cab.half .cab-code{font-size:10px;padding:1px 5px;letter-spacing:.3px;border-radius:6px}
-.cab.half .cab-name{display:none}
-.cab.half .cab-count{display:none}
-.cab.half .cab-body{height:96px;margin:7px 8px 0}
-.cab.half .cab-inside{inset:5px;padding:4px;gap:2px}
-.cab.half .ins-line{height:9px;padding:0;border-radius:3px;box-shadow:0 1px 1px rgba(0,0,0,.14)}
-.cab.half .ins-line b,.cab.half .ins-line em{display:none}
+/* 小柜子（半格）：宽度只有一半、单扇门；头部/角标/底部明细/高度与大柜完全一致，
+   只在柜内文字上缩小以适应窄柜 */
+.cab.half .cab-inside{top:5px;right:5px;bottom:5px;left:5px;padding:4px;gap:2px}
+.cab.half .ins-line{height:12px;padding:0 3px;border-radius:3px;box-shadow:0 1px 1px rgba(0,0,0,.14)}
+.cab.half .ins-line b{display:block;flex:1;min-width:0;font-size:8.5px;font-weight:600;color:#332B22}
+.cab.half .ins-line em{display:none}
 .cab.half .ins-more{font-size:8px;text-align:center;padding-right:0}
 .cab.half .ins-empty{font-size:8.5px}
-.cab.half .cab-foot{padding:7px 6px 8px;font-size:9.5px;text-align:center}
+/* 底部与大柜完全一致（同样的字号、内边距、左对齐），高度自然一样 */
 .cab.half:hover .cab-door.single{transform:rotateY(-12deg)}
-.cabs.dense .cab.half .cab-body{height:84px}
-.cabs.dense .cab.half .cab-foot{font-size:9px;padding:6px 5px 7px}
+
+/* ---------- 手机端柜子：三层立体渲染（不依赖绝对定位） ----------
+   部分手机浏览器（微信/X5 等）对 <button> 内部的绝对定位子元素不绘制，会整层消失，
+   所以手机端不用 position:absolute，改用「普通流 + 负外边距叠层」做出真正的层次：
+     第 1 层 .cab-body   木纹柜体外框（最底）
+     第 2 层 .cab-inside 柜内空腔 + 内阴影 + 物品文字（中间层，字在柜子里）
+     第 3 层 .cab-glass  玻璃门盖在最上面（斜向反光 + 门缝 + 金色把手）
+   文字被玻璃罩住 → 隔着玻璃看柜子，立体感就出来了 */
+@media (max-width:600px){
+  .cab-body{
+    display:block;height:118px;margin:9px 11px 0;padding:0;box-sizing:border-box;
+    border-radius:9px;overflow:hidden;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.5),0 8px 14px -9px rgba(84,64,40,.45);
+    transition:transform .25s ease,opacity .25s ease;
+    /* 第 1 层：木纹柜体外框（顶板高光 + 木纹 + 木色渐变） */
+    background-image:
+      linear-gradient(180deg,rgba(255,255,255,.5),rgba(255,255,255,0)),
+      repeating-linear-gradient(90deg,rgba(150,120,76,.16) 0 1px,transparent 1px 7px),
+      linear-gradient(160deg,#8A7460,#74604B 55%,#63503C);
+    background-size:auto 6px,auto,auto;
+    background-position:0 0,0 0,0 0;
+    background-repeat:no-repeat;
+  }
+  /* 第 2 层：柜内空腔，物品文字排在腔体最下方（有纵深的内阴影） */
+  .cab-frame{
+    position:static;display:block;height:100%;padding:9px 7px 7px;
+    box-sizing:border-box;border-radius:0;background:none;box-shadow:none;overflow:visible;
+  }
+  .cab-frame::before,.cab-frame::after{display:none}
+  .cab-inside{
+    position:static;display:flex;flex-direction:column;justify-content:flex-end;gap:3px;
+    height:100%;box-sizing:border-box;margin:0;padding:5px;border-radius:5px;overflow:hidden;
+    background:linear-gradient(180deg,#63523F,#75614C 45%,#83705A);
+    box-shadow:inset 0 9px 16px rgba(0,0,0,.40),inset 0 -6px 12px rgba(0,0,0,.26),
+               inset 0 0 0 1px rgba(0,0,0,.18);
+  }
+  /* 第 3 层：玻璃门（盖在文字上）。负外边距把它整体叠回柜体区域上，
+     纯块级布局 + 负 margin，任何内核都支持 */
+  /* 第 3 层：玻璃门（盖在文字上）。用 relative + top 上提整层叠到柜体上，
+     并提 z-index，确保绘制顺序在文字之后（部分手机内核对 button 里的负 margin 会失效，
+     所以这里不用负 margin） */
+  .cab-glass{
+    position:relative;top:-118px;z-index:3;
+    display:block;height:118px;box-sizing:border-box;
+    border-radius:9px;pointer-events:none;
+    background-image:
+      linear-gradient(180deg,#F1DCA8,#CBA65F 46%,#A98842),
+      linear-gradient(115deg,rgba(255,255,255,0) 8%,rgba(255,255,255,.46) 22%,rgba(255,255,255,.09) 38%,rgba(255,255,255,0) 55%,rgba(255,255,255,.28) 78%,rgba(255,255,255,0) 95%),
+      linear-gradient(160deg,rgba(255,255,255,.28) 0%,rgba(250,244,232,.13) 42%,rgba(238,226,202,.17) 72%,rgba(255,255,255,.25) 100%);
+    background-size:5px 26px,auto,auto;
+    background-position:right 7px center,0 0,0 0;
+    background-repeat:no-repeat;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.5),inset 0 0 0 4px rgba(255,255,255,.10),
+               inset 0 -14px 22px -14px rgba(70,54,34,.4);
+  }
+  /* 双门柜：中间多一道门缝（叠在玻璃层最上面，把手仍在右边） */
+  .cab-body.twin .cab-glass{
+    background-image:
+      linear-gradient(90deg,rgba(255,255,255,0) 49%,rgba(255,255,255,.42) 49%,rgba(255,255,255,.42) 51%,rgba(255,255,255,0) 51%),
+      linear-gradient(180deg,#F1DCA8,#CBA65F 46%,#A98842),
+      linear-gradient(115deg,rgba(255,255,255,0) 8%,rgba(255,255,255,.46) 22%,rgba(255,255,255,.09) 38%,rgba(255,255,255,0) 55%,rgba(255,255,255,.28) 78%,rgba(255,255,255,0) 95%),
+      linear-gradient(160deg,rgba(255,255,255,.28) 0%,rgba(250,244,232,.13) 42%,rgba(238,226,202,.17) 72%,rgba(255,255,255,.25) 100%);
+    background-size:2px 100%,5px 26px,auto,auto;
+    background-position:center center,center center,0 0,0 0;
+    background-repeat:no-repeat;
+  }
+  /* 柜门玻璃设置（清透 / 半透明 / 磨砂）在手机上同样生效 */
+  body[data-door="clear"] .cab-glass{
+    background-image:
+      linear-gradient(180deg,#F1DCA8,#CBA65F 46%,#A98842),
+      linear-gradient(115deg,rgba(255,255,255,0) 8%,rgba(255,255,255,.42) 22%,rgba(255,255,255,.06) 38%,rgba(255,255,255,0) 55%,rgba(255,255,255,.24) 78%,rgba(255,255,255,0) 95%),
+      linear-gradient(160deg,rgba(255,255,255,.08) 0%,rgba(250,244,232,.04) 42%,rgba(238,226,202,.05) 72%,rgba(255,255,255,.08) 100%);
+  }
+  body[data-door="clear"] .cab-body.twin .cab-glass{
+    background-image:
+      linear-gradient(90deg,rgba(255,255,255,0) 49%,rgba(255,255,255,.34) 49%,rgba(255,255,255,.34) 51%,rgba(255,255,255,0) 51%),
+      linear-gradient(180deg,#F1DCA8,#CBA65F 46%,#A98842),
+      linear-gradient(115deg,rgba(255,255,255,0) 8%,rgba(255,255,255,.42) 22%,rgba(255,255,255,.06) 38%,rgba(255,255,255,0) 55%,rgba(255,255,255,.24) 78%,rgba(255,255,255,0) 95%),
+      linear-gradient(160deg,rgba(255,255,255,.08) 0%,rgba(250,244,232,.04) 42%,rgba(238,226,202,.05) 72%,rgba(255,255,255,.08) 100%);
+  }
+  body[data-door="solid"] .cab-glass{
+    background-image:
+      linear-gradient(180deg,#F1DCA8,#CBA65F 46%,#A98842),
+      linear-gradient(160deg,rgba(253,250,243,.96) 0%,rgba(250,244,232,.94) 42%,rgba(238,226,202,.93) 72%,rgba(253,250,243,.95) 100%);
+    background-size:5px 26px,auto;
+    background-position:right 7px center,0 0;
+  }
+  body[data-door="solid"] .cab-body.twin .cab-glass{
+    background-image:
+      linear-gradient(90deg,rgba(200,186,160,.55) 49%,rgba(120,100,72,.5) 49%,rgba(120,100,72,.5) 51%,rgba(200,186,160,.55) 51%),
+      linear-gradient(180deg,#F1DCA8,#CBA65F 46%,#A98842),
+      linear-gradient(160deg,rgba(253,250,243,.96) 0%,rgba(250,244,232,.94) 42%,rgba(238,226,202,.93) 72%,rgba(253,250,243,.95) 100%);
+    background-size:2px 100%,5px 26px,auto;
+    background-position:center center,center center,0 0;
+  }
+  /* 文字在玻璃下面：轻微压暗压灰，隔着玻璃看更真实 */
+  .cab-inside .ins-line{filter:saturate(.88) brightness(.94)}
+  .cab-inside .ins-empty{filter:brightness(.94)}
+  .cab-door,.handle{display:none}
+  .cab.half .cab-inside{padding:4px;gap:2px}
+  .cab.half .cab-body.twin .cab-glass{background-size:2px 100%,5px 26px,auto,auto}
+  /* 点柜子时的开门反馈：整柜轻缩 + 玻璃淡出（像门被拉开） */
+  .cab.open-doors .cab-body{transform:scale(.96);opacity:.9}
+  .cab.open-doors .cab-glass{opacity:0}
+  .cab-glass{transition:opacity .22s ease}
+}
+
+/* 叠层兜底：若玻璃层没能盖住柜体（内核不支持相对位移叠层），
+   就让里面的东西呈现「雾化」效果——看起来仍然是隔着一层玻璃 */
+body.nglass .cab-inside .ins-line{filter:blur(.35px) saturate(.8) brightness(1.02);opacity:.9}
+body.nglass .cab-inside .ins-empty{filter:blur(.3px);opacity:.72}
+body.nglass .cab-body{
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.55),
+             inset 0 30px 34px -26px rgba(255,255,255,.4),
+             inset 0 -12px 20px -14px rgba(70,54,34,.35),
+             0 8px 14px -9px rgba(84,64,40,.45)}
+
+/* 简洁模式（内核不认宽度设置时的兑底）：柜子取消多列，全宽堆叠，任何内核都不会乱 */
+body.fb .cabs .cab-row{display:block}
+body.fb .cabs .cab{display:block;width:auto !important;min-width:0 !important;max-width:none !important;
+  flex:none !important;margin:0 0 12px}
+body.fb .cabs{display:block}
 
 /* ---------- 搜索结果 ---------- */
 .results{margin-top:18px;display:none}
@@ -290,7 +452,7 @@ header.top{
 .log-row .at{color:#B4A894;font-size:11px;flex:0 0 auto}
 
 /* ---------- 面板 ---------- */
-.mask{position:fixed;inset:0;background:rgba(46,38,26,.34);backdrop-filter:blur(2px);
+.mask{position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(46,38,26,.34);
   opacity:0;pointer-events:none;transition:opacity .25s;z-index:60}
 .mask.on{opacity:1;pointer-events:auto}
 .sheet{position:fixed;z-index:70;left:50%;bottom:0;transform:translate(-50%,104%);
@@ -300,8 +462,10 @@ header.top{
   display:flex;flex-direction:column;overflow:hidden}
 .sheet.on{transform:translate(-50%,0)}
 @media (min-width:720px){
-  .sheet{bottom:auto;top:50%;transform:translate(-50%,-46%) scale(.98);border-radius:22px;opacity:0;max-height:86vh}
-  .sheet.on{transform:translate(-50%,-50%) scale(1);opacity:1}
+  /* 关闭的弹层必须彻底不可点：之前只是透明，仍悬浮在屏幕中央拦截点击，
+     导致「柜子设置点不动 / ✕点不动 / 点物品弹『先填物品名称』」 */
+  .sheet{bottom:auto;top:50%;transform:translate(-50%,-46%) scale(.98);border-radius:22px;opacity:0;max-height:86vh;pointer-events:none;visibility:hidden;transition:transform .32s cubic-bezier(.2,.85,.2,1),opacity .25s ease,visibility 0s .3s}
+  .sheet.on{transform:translate(-50%,-50%) scale(1);opacity:1;pointer-events:auto;visibility:visible;transition:transform .32s cubic-bezier(.2,.85,.2,1),opacity .25s ease,visibility 0s}
 }
 .sheet-grip{width:38px;height:4px;border-radius:999px;background:#E5DCCB;margin:9px auto 2px;flex:0 0 auto}
 @media (min-width:720px){.sheet-grip{display:none}}
@@ -332,6 +496,9 @@ header.top{
 .qty button{width:24px;height:24px;border-radius:50%;font-size:14px;color:#7A6E5C;display:grid;place-items:center}
 .qty button:active{background:var(--bg2)}
 .qty span{min-width:18px;text-align:center;font-size:12.5px;font-weight:600}
+.takeout{white-space:nowrap;font-size:12px;font-weight:600;color:#B0654A;background:#FDF1EA;
+  border:1px solid #F2DCCE;border-radius:999px;padding:6px 13px;flex:0 0 auto}
+.takeout:active{background:#F8E3D6}
 .del{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;color:#C08A73;flex:0 0 auto}
 .del:active{background:#F8E7DF}
 .mini-edit{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;color:#8A9C90;flex:0 0 auto}
@@ -387,7 +554,7 @@ header.top{
 .toast.on{opacity:1;transform:translate(-50%,0)}
 
 /* 名字弹窗 */
-.mini-mask{position:fixed;inset:0;background:rgba(46,38,26,.36);z-index:80;display:none;place-items:center;padding:20px}
+.mini-mask{position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(46,38,26,.36);z-index:80;display:none;place-items:center;padding:20px}
 .mini-mask.on{display:grid}
 .mini-card{background:var(--surface);border-radius:20px;padding:20px;width:min(340px,100%);box-shadow:var(--shadow-lg)}
 .mini-card h4{margin:0 0 4px;font-size:16px}
@@ -396,6 +563,29 @@ header.top{
 .mini-card .ghost{flex:1;padding:12px;border-radius:12px;background:var(--bg2);font-size:14px;color:#6E6250}
 .mini-card .ok{flex:1;padding:12px;border-radius:12px;background:var(--sage);color:#fff;font-size:14px;font-weight:600}
 .foot-note{text-align:center;font-size:11.5px;color:#B3A794;margin-top:26px}
+/* ---------- 楼层切换（F2 / F3 / F4）：每层柜子布置一样，东西各放各的 ---------- */
+.floor-bar{display:flex;align-items:center;gap:8px;margin:18px 0 0;flex-wrap:wrap}
+.floor-bar .lab{font-size:11.5px;color:#A2937B;letter-spacing:1px;margin-right:2px}
+.floor-pill{
+  font-size:13px;font-weight:650;letter-spacing:.6px;color:#7A6A50;
+  background:linear-gradient(180deg,#FBF6EA,#F2E9D6);border:1px solid #E4D6BC;
+  border-radius:999px;padding:6px 15px;line-height:1;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 1px 2px rgba(70,54,34,.05);
+  transition:background .2s,color .2s,border-color .2s,box-shadow .2s,transform .12s;
+  touch-action:manipulation;
+}
+.floor-pill:active{transform:scale(.96)}
+.floor-pill.on{
+  background:linear-gradient(180deg,#6F8C78,#4E6E5F);color:#fff;border-color:#46654F;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 5px 12px -5px rgba(78,110,95,.6);
+}
+.floor-bar .fnote{margin-left:auto;font-size:11px;color:#A2937B}
+@media (max-width:600px){
+  .floor-bar{margin:14px 0 0;gap:7px}
+  .floor-pill{font-size:12.5px;padding:6px 13px}
+  .floor-bar .fnote{display:none}
+}
+
 </style>
 </head>
 <body>
@@ -407,11 +597,16 @@ header.top{
         <svg viewBox="0 0 24 24"><path d="M3.5 10.5 12 3.6l8.5 6.9"/><path d="M5.5 9.6V20h13V9.6"/><path d="M9.6 20v-5.4h4.8V20"/></svg>
       </div>
       <div>
-        <h1>展展家里的柜子</h1>
+        <h1>展展家的柜子</h1>
         <p>被子床单，放哪儿一看就知道</p>
       </div>
     </div>
     <div class="top-spacer"></div>
+    <div class="searchbar head-search">
+      <span class="ico"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg></span>
+      <input id="q" placeholder="找东西，如「冬被」" autocomplete="off">
+      <button class="search-clear" id="qClear">✕</button>
+    </div>
     <button class="top-btn" id="refreshBtn" title="刷新数据">⟳ <span class="t">刷新</span></button>
     <button class="top-btn" id="libBtn">🧺 <span class="t">物品库</span></button>
     <button class="who-chip" id="whoBtn">
@@ -420,14 +615,8 @@ header.top{
     </button>
   </div>
 </header>
-
 <div class="wrap">
-  <div class="searchbar mini">
-    <span class="ico"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg></span>
-    <input id="q" placeholder="找东西，如「冬被」" autocomplete="off">
-    <button class="search-clear" id="qClear">✕</button>
-  </div>
-
+  <div class="floor-bar" id="floorBar"></div>
   <div class="overview">
     <div class="stat link" id="stTotalCard" onclick="openAll()" role="button" tabindex="0"><span>物品总数</span><b id="stTotal">0<i>件</i></b><em class="tap">点开看明细 ›</em></div>
     <div class="stat link" id="stTypesCard" onclick="openLib()" role="button" tabindex="0"><span>物品品类</span><b id="stTypes">0<i>种</i></b><em class="tap">点开物品库 ›</em></div>
@@ -441,7 +630,7 @@ header.top{
     <div class="logs" id="logs"></div>
   </div>
 
-  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见</div>
+  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1143</span></div>
 </div>
 
 <div class="mask" id="mask"></div>
@@ -481,7 +670,7 @@ header.top{
         <input class="field" id="cabCode" placeholder="A1" maxlength="6">
         <button class="top-btn solid" onclick="saveCabCode()">保存</button>
       </div>
-      <div class="form-tip" style="text-align:left;margin-top:8px">编号在整个家里不能重复</div>
+      <div class="form-tip" style="text-align:left;margin-top:8px">同一楼层里编号不能重复（不同楼层可以同名）</div>
     </div>
     <div class="setting-block">
       <h4>柜子大小</h4>
@@ -489,7 +678,16 @@ header.top{
         <button class="top-btn" id="szFull" onclick="setCabSize('full')">大柜子</button>
         <button class="top-btn" id="szHalf" onclick="setCabSize('half')">小柜子（半格）</button>
       </div>
-      <div class="form-tip" style="text-align:left;margin-top:8px">小柜子只占半格宽，适合矮柜、鞋柜；柜子数量可以随时用房间右边的「＋ 柜子」加，在下面删</div>
+      <div class="form-tip" style="text-align:left;margin-top:8px">小柜子只占半格宽，适合矮柜、鞋柜；每个房间的柜子数量是固定的（F2/F3/F4 三层布置一致）</div>
+    </div>
+    <div class="setting-block">
+      <h4>柜门玻璃</h4>
+      <div class="form-row" style="margin-bottom:0">
+        <button class="top-btn" id="dgSolid" onclick="setDoor('solid')">实门</button>
+        <button class="top-btn" id="dgGlass" onclick="setDoor('glass')">半透明</button>
+        <button class="top-btn" id="dgClear" onclick="setDoor('clear')">全透明</button>
+      </div>
+      <div class="form-tip" style="text-align:left;margin-top:8px">调柜门玻璃的透明程度：半透明能隐约看到里面，全透明看得很清楚，实门基本看不到；这是全家统一的设置</div>
     </div>
     <div class="setting-block">
       <h4>删掉这个柜子</h4>
@@ -498,7 +696,7 @@ header.top{
     </div>
   </div>
   <div class="form" id="addForm">
-    <div class="form-label">点一下，直接放进这个柜子（1 件）</div>
+    <div class="form-label" id="addFormLabel">点一下，直接放进这个柜子（1 件）</div>
     <div class="chips wrap" id="typeChips"></div>
     <div class="form-tip" style="text-align:left">标 ✓ 的已经在这个柜子里了；要多件点物品旁的 ＋；这里没有的，去「物品库」加一种</div>
   </div>
@@ -591,6 +789,7 @@ header.top{
 <div class="toast" id="toast"></div>
 
 <script>
+const VER = "v1143";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
 const BASE_COLOR = {"被子":"#9DC0AD","床单":"#E3C878","被套":"#DDA077","枕头":"#A9BEDB","毛毯":"#CFA6C0","其他":"#C3B9AA"};
 const PALETTE = ["#8FB0A8","#D9B36C","#B3A0C9","#C7A98B","#94AEBB","#D6A0A0","#A8B98E"];
 /* 种类来自后端，可以自己加，颜色按顺序分配 */
@@ -603,6 +802,9 @@ function catColor(name){
 
 let state = null;
 let who = localStorage.getItem("storage_who") || "";
+let curFloor = "F3";           /* 当前楼层，首页固定进 F3 */
+let floorReady = false;        /* 首次拿到数据时按服务端默认层对齐 */
+const FALLBACK_FLOORS = ["F2", "F3", "F4"];
 let currentCab = null;
 let currentTab = "items";
 let libCat = "被子";
@@ -629,9 +831,25 @@ async function api(method, path, body){
 
 /* ---------- 加载与渲染 ---------- */
 let lastSyncAt = 0, lastSig = "";
+/* 服务端版本比页面新 → 手机浏览器还在用缓存的旧页面，自动带新参数重载一次（防死循环） */
+function verCheck(sv){
+  if(!sv || sv === VER) return false;
+  try{
+    if(sessionStorage.getItem("_verBust") === sv) return false;
+    sessionStorage.setItem("_verBust", sv);
+  }catch(e){}
+  try{
+    const u = new URL(location.href);
+    u.searchParams.set("_v", String(Date.now()));
+    location.replace(u.toString());
+  }catch(e){ location.reload(); }
+  return true;
+}
 async function load(){
   try{
     state = await api("GET","/api/state");
+    if(verCheck(state.ver)) return;
+    if(!floorReady){ curFloor = state.defaultFloor || "F3"; floorReady = true; }
     lastSig = JSON.stringify(state);
     lastSyncAt = Date.now();
     render();
@@ -640,17 +858,56 @@ async function load(){
   }
 }
 
+/* ---------- 楼层 ---------- */
+function floors(){ return (state && state.floors && state.floors.length) ? state.floors : FALLBACK_FLOORS; }
+function roomsNow(){ return ((state && state.rooms) || []).filter(r=>(r.floor || "F3") === curFloor); }
+/* 物品库也按楼层分开：只看当前楼层的那一份 */
+function typesNow(){ return ((state && state.types) || []).filter(t=>(t.floor || "F3") === curFloor); }
+function cabFloor(id){
+  const hit = findCab(id);
+  if(hit && hit.room) return hit.room.floor || "F3";
+  return curFloor;
+}
+/* 某物品在当前楼层放在哪个柜子（每层各放各的） */
+function placeOf(t){
+  if(!t) return null;
+  if(t.places) return t.places[curFloor] || null;
+  return t.place || null;
+}
+function renderFloorBar(){
+  const bar = el("floorBar");
+  if(!bar) return;
+  bar.innerHTML = '<span class="lab">楼层</span>' + floors().map(f=>
+    `<button class="floor-pill ${f===curFloor?"on":""}" onclick="setFloor('${f}')">${f}</button>`
+  ).join("") + '<span class="fnote">每层柜子布置一样，东西各放各的</span>';
+}
+function setFloor(f){
+  if(f === curFloor) return;
+  curFloor = f;
+  render();
+  setTimeout(layoutRows, 60);
+  try{ window.scrollTo({top:0, behavior:"smooth"}); }catch(e){ window.scrollTo(0,0); }
+}
+
 function render(){
   if(!state) return;
+  applyDoor();
   el("whoName").textContent = who || "家人";
+  const rooms = roomsNow();
   let total = 0;
-  state.rooms.forEach(r=>{ total += r.count; });
+  rooms.forEach(r=>{ total += r.count; });
   el("stTotal").innerHTML = total + "<i>件</i>";
-  el("stTypes").innerHTML = (state.types || []).length + "<i>种</i>";
+  const kindsInFloor = (state.types || []).filter(t=>placeOf(t)).length;
+  el("stTypes").innerHTML = kindsInFloor + "<i>种</i>";
+  renderFloorBar();
 
-  el("rooms").innerHTML = state.rooms.map(r=>{
+  el("rooms").innerHTML = rooms.map(r=>{
     const n = r.cabinets.length;
     const rows = splitRows(r.cabinets);
+    /* 每行至少容得下 2 个大柜（4 个半格）；大柜宽度固定，不再被小柜挤宽 */
+    const U = Math.max(4, ...rows.map(rw=>rw.reduce((s,c)=>s+(c.size==="half"?1:2),0)));
+    const K = Math.max(...rows.map(rw=>rw.length), 1);   /* 最多柜子的那行，决定单位宽度的基准 */
+    const GP = 3;   /* 间隙占整行的百分比，柜宽按它折算，保证铺满的那行刚好 100% */
     const dense = Math.max(1, ...rows.map(x=>x.length)) >= 4;
     const cls = "cabs" + (dense ? " dense" : "");
     return `
@@ -659,12 +916,15 @@ function render(){
         <h2>${esc(r.name)}</h2>
         <span class="meta">${n} 个柜子 · ${r.count} 件</span>
         <span class="rule"></span>
-        <button class="room-add" onclick="addCabinet(${r.id})">＋ 柜子</button>
       </div>
       <div class="${cls}">${rows.map(row=>row.length?
-        `<div class="cab-row">${row.map(c=>cabHTML(r,c)).join("")}</div>`:"").join("")}</div>
+        `<div class="cab-row" data-u="${U}" data-k="${K}" style="gap:12px">${row.map(c=>cabHTML(r,c,U,K,GP)).join("")}</div>`:"").join("")}</div>
     </section>`;
   }).join("");
+
+  layoutRows();          /* JS 量出实际像素宽，写死像素宽度（兼容所有内核） */
+  requestAnimationFrame(layoutRows);   /* 布局稳定后再校一次 */
+  setTimeout(layoutRows, 300);
 
   el("logs").innerHTML = state.logs.length ? state.logs.map(l=>`
     <div class="log-row">
@@ -678,55 +938,165 @@ function render(){
   if(el("allSheet").classList.contains("on")) renderAll();
 }
 
-/* 柜子自动分两行：大柜占 2 份宽、小柜占 1 份，每行都铺满不留空；
-   按顺序找「两行总宽最接近」的切分点：4 个 → 2+2，5 个 → 2+3，6 个 → 3+3 */
+/* JS 像素排版：量出每行实际宽度，给每张卡片写死像素宽度。
+   三重保险：① 内联 style ② 动态注入的 <style> 规则（防止个别内核丢弃内联样式）
+   ③ 自检回读：若浏览器不认这些宽度，自动切换简洁模式（每个柜子铺满一行堆叠） */
+function layoutRows(){
+  let info = "", ok = false, bad = 0;
+  try{
+    const GAP = 12;
+    let css = "";
+    const rows = document.querySelectorAll(".cab-row");
+    for(let r=0; r<rows.length; r++){
+      const rw = rows[r];
+      const kids = rw.children;
+      if(kids.length < 1) continue;
+      const rowW = rw.getBoundingClientRect().width || rw.clientWidth || 0;
+      const U = parseInt(rw.getAttribute("data-u"), 10) || 4;
+      const K = parseInt(rw.getAttribute("data-k"), 10) || kids.length;
+      const unit = (rowW - (K-1)*GAP) / U;
+      for(let i=0; i<kids.length; i++){
+        const c = kids[i];
+        const wantPx = (parseInt(c.getAttribute("data-wu"), 10) || 2) * unit;
+        const wpx = wantPx.toFixed(1) + "px";
+        c.style.flex = "0 0 " + wpx;
+        c.style.width = wpx;
+        c.style.maxWidth = wpx;
+        c.style.minWidth = "0";
+        const cid = c.getAttribute("data-cab");
+        if(cid) css += '.cab[data-cab="'+cid+'"]{width:'+wpx+'!important;flex:0 0 '+wpx+'!important;max-width:'+wpx+'!important;min-width:0!important}\n';
+        /* 卡片内部三段（头部/木柜/底部）也写死像素宽度：部分手机内核纵向 flex
+           子元素不自动拉伸，木柜会按内容收缩变窄（看起来每个格子宽窄不一） */
+        const parts = c.children;
+        for(let j=0; j<parts.length; j++){
+          const s = parts[j];
+          s.style.boxSizing = "border-box";
+          let sw = wantPx;
+          if(s.className.indexOf("cab-body") >= 0){
+            const cs2 = getComputedStyle(s);
+            sw = Math.max(40, wantPx - (parseFloat(cs2.marginLeft)||0) - (parseFloat(cs2.marginRight)||0));
+          }
+          const swx = sw.toFixed(1) + "px";
+          s.style.width = swx;
+          s.style.maxWidth = swx;
+          const sc = ".cab[data-cab="+cid+"] "+(s.className.indexOf("cab-body")>=0?".cab-body":s.className.indexOf("cab-head")>=0?".cab-head":".cab-foot");
+          if(cid) css += sc+'{width:'+swx+'!important;max-width:'+swx+'!important;box-sizing:border-box!important}\n';
+          if(Math.abs(s.offsetWidth - sw) > 3) bad++;
+        }
+        /* 自检：读回实际宽度，偏差超过3px说明内核没认这些宽度设置 */
+        if(Math.abs(c.offsetWidth - wantPx) > 3) bad++;
+      }
+      if(!info && kids.length >= 2){
+        const ws = [];
+        for(let i=0;i<kids.length;i++) ws.push(kids[i].offsetWidth);
+        info = "行宽" + Math.round(rowW) + "px 柜宽" + ws.join("/");
+        ok = true;
+      }
+    }
+  }catch(err){
+    info = "失败:" + ((err && err.message) || err);
+    bad = 1;
+  }
+  /* 注入样式表规则作为第二重保险；简洁模式下不再注入像素规则 */
+  try{
+    let sheet = document.getElementById("pxSheet");
+    if(!sheet){ sheet = document.createElement("style"); sheet.id = "pxSheet"; document.head.appendChild(sheet); }
+    sheet.textContent = broken ? "" : (css || "");
+  }catch(_){}
+  /* 自检不过 → 切换简洁模式：柜子全宽堆叠，任何内核都不会乱（不显示任何提示文字） */
+  const broken = bad > 0;
+  if(document.body.className.indexOf("fb") >= 0 !== broken){
+    document.body.className = broken ? document.body.className + " fb" : document.body.className.replace(/\s*\bfb\b/g, "");
+  }
+  checkGlass();
+}
+/* 自检玻璃层有没有真的盖在柜体上（部分内核不支持相对位移叠层）：
+   没盖住 → 给 body 加 nglass，改用「雾化文字」的画法，看上去仍是隔着玻璃 */
+function checkGlass(){
+  let bad = false;
+  try{
+    const bodies = document.querySelectorAll(".cab-body");
+    for(let i=0; i<bodies.length && i<6; i++){
+      const b = bodies[i];
+      const g = b.querySelector(".cab-glass");
+      if(!g) continue;
+      if(getComputedStyle(g).display === "none") continue;
+      const rb = b.getBoundingClientRect(), rg = g.getBoundingClientRect();
+      if(rg.height < rb.height * 0.6 || Math.abs(rg.top - rb.top) > 6 || Math.abs(rg.width - rb.width) > 6){
+        bad = true; break;
+      }
+    }
+  }catch(_){ bad = false; }
+  const has = document.body.className.indexOf("nglass") >= 0;
+  if(bad && !has) document.body.className += " nglass";
+  if(!bad && has) document.body.className = document.body.className.replace(/\s*\bnglass\b/g, "");
+}
+window.addEventListener("resize", layoutRows);
+window.addEventListener("orientationchange", function(){ setTimeout(layoutRows, 150); });
+document.addEventListener("visibilitychange", function(){ if(!document.hidden) layoutRows(); });
+
+/* 柜子自动分两行：按顺序找两行总宽最接近的切分点，两行都至少 2 个柜子；
+   ≤3 个柜子时排一行。宽度不在这里定，由 U（每行半格数）统一算 */
 function splitRows(cabs){
   const n = cabs.length;
-  if(n <= 2) return [cabs.slice(), []];
+  if(n <= 3) return [cabs.slice(), []];
   const w = c => c.size === "half" ? 1 : 2;
   const total = cabs.reduce((s,c)=>s+w(c), 0);
-  let best = 1, bestDiff = Infinity, acc = 0;
-  const pre = [];
+  let acc = 0; const pre = [];
   for(let i=0;i<n;i++){ acc += w(cabs[i]); pre.push(acc); }
-  for(let i=1;i<n;i++){
+  let best = 0, bestD = Infinity;
+  for(let i=2;i<=n-2;i++){          /* 两行都至少 2 个柜子，避免孤行拉伸 */
     const d = Math.abs(pre[i-1]*2 - total);
-    if(d < bestDiff){ bestDiff = d; best = i; }
+    if(d < bestD){ bestD = d; best = i; }
   }
-  const r1 = cabs.slice(0, best), r2 = cabs.slice(best);
-  const loneHalf = row => row.length === 1 && row[0].size === "half";
-  if(loneHalf(r1) && r2.length){ r1.push(r2.shift()); }
-  else if(loneHalf(r2) && r1.length){ r1.push(r2.shift()); }
+  if(!best) return [cabs.slice(), []];
+  let r1 = cabs.slice(0, best), r2 = cabs.slice(best);
+  const allHalf = r => r.every(c=>c.size==="half");
+  if(allHalf(r1) && r2.some(c=>c.size!=="half")){ r1.push(r2.shift()); r2.unshift(r1.shift()); }
+  else if(allHalf(r2) && r1.some(c=>c.size!=="half")){ r2.push(r1.shift()); r1.unshift(r2.shift()); }
   return [r1, r2];
 }
 
+/* 全局错误提示：万一手机上出错，能看到是哪里出问题 */
+window.addEventListener("error", e=>{
+  try{ toast("页面出错了：" + (e.message||"").slice(0,60)); }catch(_){}
+});
+
 /* 半透明柜门 + 柜内物品直接可读 */
-function cabHTML(room, cab){
+function cabHTML(room, cab, U, K, GP){
   const items = cab.items || [];
   const isHalf = cab.size === "half";
-  const maxShown = isHalf ? 5 : 4;
+  /* 宽度固定：单位宽 = (100% - (K-1)个间隙)/U；大柜=2个单位，小柜=1个单位。
+     纯百分比，不用 calc/var，任何内核都生效；任何行、任何房间里大柜完全等宽 */
+  const wu = isHalf ? 1 : 2;
+  const wpct = (wu * (100 - (K-1)*GP) / U).toFixed(3);
+  /* 先给百分比作为初始值，layoutRows() 随后改成精确像素宽（部分手机内核对
+     calc/var 甚至百分比宽度都有兼容问题，像素值是最保险的） */
+  const width = `width:${wpct}%;flex:0 1 ${wpct}%`;
+  const maxShown = isHalf ? 7 : 4;
   const shown = items.slice(0, maxShown);
   const inner = items.length
     ? shown.map(i=>`<div class="ins-line" style="background:${catColor(i.category)}E6">
          <b>${esc(i.name)}</b><em>×${i.qty}</em></div>`).join("")
       + (items.length > shown.length ? `<div class="ins-more">还有 ${items.length-shown.length} 种…</div>` : "")
     : `<div class="ins-empty">空柜子</div>`;
-  const foot = isHalf
-    ? (items.length ? `<b>${cab.count}</b> 件` : `<span class="empty">空</span>`)
-    : (items.length
-        ? `<b>${cab.count}</b> 件 · ${items.map(i=>esc(i.name)).slice(0,4).join("、")}${items.length>4?"…":""}`
-        : `<span class="empty">还没有东西，点开可以放</span>`);
+  /* 小柜底部明细与大柜完全同款（同格式同字号），窄卡里自然省略号截断 */
+  const foot = items.length
+    ? `<b>${cab.count}</b> 件 · ${items.map(i=>esc(i.name)).slice(0,4).join("、")}${items.length>4?"…":""}`
+    : `<span class="empty">还没有东西，点开可以放</span>`;
   const doors = isHalf
     ? `<div class="cab-door single"><i class="handle"></i></div>`
     : `<div class="cab-door left"><i class="handle"></i></div><div class="cab-door right"><i class="handle"></i></div>`;
   return `
-    <button class="cab ${isHalf?"half":""}" onclick="openCab(${cab.id})" data-cab="${cab.id}" title="${esc(cab.code)}${cab.name?" "+esc(cab.name):""}">
+    <button class="cab ${isHalf?"half":""}" style="${width}" data-wu="${wu}" onclick="openCab(${cab.id})" data-cab="${cab.id}" title="${esc(cab.code)}${cab.name?" "+esc(cab.name):""}">
       <div class="cab-head">
         <span class="cab-code">${esc(cab.code)}</span>
         ${cab.name?`<span class="cab-name">${esc(cab.name)}</span>`:""}
-        ${cab.count?`<span class="cab-count ${cab.count>=6?"hot":""}">${cab.count} 件</span>`:""}
+        ${cab.count?`<span class="cab-count ${cab.count>=6?"hot":""}" title="共 ${cab.count} 件">${cab.count} 件</span>`:""}
       </div>
-      <div class="cab-body">
+      <div class="cab-body ${isHalf?"":"twin"}">
         <div class="cab-frame"><div class="cab-inside">${inner}</div></div>
+        <div class="cab-glass"></div>
         ${doors}
       </div>
       <div class="cab-foot">${foot}</div>
@@ -756,14 +1126,23 @@ function findItem(id){
 function openCab(id){
   const hit = findCab(id);
   if(!hit) return;
-  currentCab = id;
-  switchTab("items");
-  el("cabName").value = hit.cab.name || "";
-  el("cabCode").value = hit.cab.code || "";
-  refreshSheet();
-  el("mask").classList.add("on");
-  el("sheet").classList.add("on");
-  el("sheet").setAttribute("aria-hidden","false");
+  const go = ()=>{
+    currentCab = id;
+    switchTab("items");
+    el("cabName").value = hit.cab.name || "";
+    el("cabCode").value = hit.cab.code || "";
+    refreshSheet();
+    el("mask").classList.add("on");
+    el("sheet").classList.add("on");
+    el("sheet").setAttribute("aria-hidden","false");
+  };
+  /* 弹层立即打开，开门动画同步进行，手机上不延迟不卡顿 */
+  go();
+  const card = document.querySelector('.cab[data-cab="'+id+'"]');
+  if(card && !window.matchMedia("(prefers-reduced-motion: reduce)").matches){
+    card.classList.add("open-doors");
+    setTimeout(()=>card.classList.remove("open-doors"), 500);
+  }
 }
 function closeSheet(){
   el("mask").classList.remove("on");
@@ -787,20 +1166,15 @@ function refreshSheet(){
   el("shSub").textContent = cab.items.length ? `里面 ${cab.items.length} 种 · 共 ${cab.count} 件` : "还是空的，先放点东西进去";
   el("szFull").className = "top-btn" + (cab.size === "half" ? "" : " solid");
   el("szHalf").className = "top-btn" + (cab.size === "half" ? " solid" : "");
-  el("shItems").innerHTML = cab.items.length ? cab.items.map(i=>`
+  el("shItems").innerHTML = cab.items.length ? cab.items.slice().sort((a,b)=>a.name.localeCompare(b.name,"zh-Hans-CN")).map(i=>`
     <div class="item">
       <span class="cat" style="background:${catColor(i.category)}"></span>
       <div class="body" onclick="openItemEdit(${i.id})">
         <b>${esc(i.name)}</b>
         <small>${esc(i.category)}${i.note?" · "+esc(i.note):""}${i.who?" · "+esc(i.who)+"放的":""}</small>
       </div>
-      <div class="qty">
-        <button onclick="bumpQty(${i.id},-1)">−</button>
-        <span>${i.qty}</span>
-        <button onclick="bumpQty(${i.id},1)">＋</button>
-      </div>
       <button class="mini-edit" onclick="openItemEdit(${i.id})" title="改名字/数量/备注">✎</button>
-      <button class="del" onclick="removeItem(${i.id})" title="取出">✕</button>
+      <button class="takeout" onclick="removeItem(${i.id})">取出</button>
     </div>`).join("")
     : `<div class="empty-state"><span class="big">🧺</span>这个柜子还空着<br>在下面从物品库选一件放进来</div>`;
   renderTypeChips();
@@ -811,9 +1185,11 @@ function refreshSheet(){
 }
 
 function renderTypeChips(){
-  const types = state.types || [];
+  const types = typesNow().slice().sort((a,b)=>a.name.localeCompare(b.name,"zh-Hans-CN"));
+  if(el("addFormLabel")) el("addFormLabel").textContent =
+    `点一下，直接放进这个柜子（1 件）· 只用 ${curFloor} 的物品库`;
   if(!types.length){
-    el("typeChips").innerHTML = `<span class="chip" style="cursor:default">物品库还空着，点右上角「物品库」加一种</span>`;
+    el("typeChips").innerHTML = `<span class="chip" style="cursor:default">${curFloor} 的物品库还空着，点右上角「物品库」加一种</span>`;
     return;
   }
   const hit = findCab(currentCab);
@@ -824,8 +1200,9 @@ function renderTypeChips(){
       return `<button class="chip used" disabled>${esc(t.name)} ✓</button>`;
     }
     /* 已经在别的柜子：灰掉并写明位置，点了给提示 */
-    if(t.place){
-      return `<button class="chip used other" onclick="usedHint(${t.id})">${esc(t.name)} · 在${esc(t.place.code)}</button>`;
+    const pl = placeOf(t);
+    if(pl){
+      return `<button class="chip used other" onclick="usedHint(${t.id})">${esc(t.name)} · 在${esc(pl.code)}</button>`;
     }
     return `<button class="chip" onclick="putItem(${t.id})">${esc(t.name)}</button>`;
   }).join("");
@@ -833,8 +1210,9 @@ function renderTypeChips(){
 
 function usedHint(typeId){
   const t = (state.types || []).find(x=>x.id===typeId);
-  if(!t || !t.place) return;
-  toast(`「${t.name}」已经在 ${t.place.label} 里（${t.place.qty} 件）。一件物品只能放一个柜子，想挪先在那里取出`);
+  const pl = placeOf(t);
+  if(!pl) return;
+  toast(`「${t.name}」本层已经在 ${pl.room} ${pl.code} 里（${pl.qty} 件）。同层一件物品只放一个柜子，想挪先在那里取出`);
 }
 
 /* 点一下＝直接放 1 件 */
@@ -842,14 +1220,15 @@ let putting = false;
 async function putItem(typeId){
   if(!currentCab || putting) return;
   const t = (state.types || []).find(x=>x.id===typeId);
-  if(t && t.place && t.place.cabinet_id !== currentCab){
+  const pl0 = placeOf(t);
+  if(pl0 && pl0.cabinet_id !== currentCab){
     return usedHint(typeId);
   }
   putting = true;
   try{
     state = await api("POST","/api/items",{cabinetId: currentCab, typeId, qty: 1, note: "", who});
     render();
-    toast("已放进 " + (findCab(currentCab)?.cab.code || "") + " ✓（1 件）");
+    toast("已放进 " + ((findCab(currentCab) || {}).cab ? findCab(currentCab).cab.code : "") + " ✓（1 件）");
   }catch(e){ toast(e.message || "放不进去"); }
   finally{ putting = false; }
 }
@@ -930,8 +1309,9 @@ async function saveEdit(){
     if(edCtx.kind === "item"){
       let typeId = edCtx.typeId;
       if(needType && !typeId){          // 老数据没有基础物品：补一条，再挂上去
-        state = await api("POST","/api/types",{name, category:cat, who});
-        const created = (state.types||[]).find(x=>x.name === name);
+        const fl = edCtx.cabId ? cabFloor(edCtx.cabId) : curFloor;
+        state = await api("POST","/api/types",{name, category:cat, floor:fl, who});
+        const created = (state.types||[]).find(x=>x.name === name && (x.floor||"F3") === fl);
         typeId = created ? created.id : 0;
       }
       const qty = Math.max(1, Math.min(999, parseInt(el("edQty").value||"1",10) || 1));
@@ -950,6 +1330,20 @@ el("edMask").addEventListener("click", e=>{ if(e.target === el("edMask")) closeE
 el("edName").addEventListener("keydown", e=>{ if(e.key==="Enter") saveEdit(); });
 
 /* ---------- 柜子设置 ---------- */
+function applyDoor(){
+  const v = (state.cfg && state.cfg.doorGlass) || "glass";
+  document.body.dataset.door = v;
+  ["Solid","Glass","Clear"].forEach(s=>{
+    const b = el("dg"+s);
+    if(b) b.className = "top-btn" + (v === s.toLowerCase() ? " solid" : "");
+  });
+}
+async function setDoor(v){
+  try{
+    state = await api("POST","/api/config",{doorGlass:v, who});
+    applyDoor(); toast("柜门玻璃已调整");
+  }catch(e){ toast(e.message || "保存失败"); }
+}
 async function saveCabName(){
   try{
     state = await api("PATCH","/api/cabinets/"+currentCab,{name: el("cabName").value.trim(), who});
@@ -998,14 +1392,16 @@ function closeLib(){
   el("mask").classList.remove("on");
 }
 function renderLib(){
-  const types = (state && state.types) || [];
-  el("libSub").textContent = types.length ? `共 ${types.length} 种基础物品，柜子里都从这儿选` : "还没有物品，先在下面加一个";
+  const types = typesNow().slice().sort((a,b)=>a.name.localeCompare(b.name,"zh-Hans-CN"));
+  el("libSub").textContent = types.length
+    ? `${curFloor} 的物品库共 ${types.length} 种，已经放了 ${types.filter(t=>placeOf(t)).length} 种（其他楼层各有一份自己的）`
+    : `${curFloor} 的物品库还没有东西，先在下面加一个`;
   el("libList").innerHTML = types.length ? types.map(t=>`
     <div class="lib-row">
       <span class="cat" style="width:9px;height:9px;border-radius:50%;background:${catColor(t.category)};flex:0 0 auto"></span>
       <div class="body" onclick="openTypeEdit(${t.id})">
         <b>${esc(t.name)}</b>
-        <small>${esc(t.category)} · ${t.place ? "在 "+esc(t.place.label)+"（"+t.place.qty+" 件）" : "还没放进柜子"}</small>
+        <small>${esc(t.category)} · ${placeOf(t) ? "在 "+esc(placeOf(t).room)+" "+esc(placeOf(t).code)+"（"+placeOf(t).qty+" 件）" : curFloor+" 还没放"}</small>
       </div>
       <button class="mini-edit" onclick="openTypeEdit(${t.id})" title="改名/换分类">✎</button>
       <button class="del" onclick="delType(${t.id})" title="删除">🗑</button>
@@ -1027,8 +1423,8 @@ async function addType(){
   const name = el("libName").value.trim();
   if(!name){ toast("先填物品名称"); el("libName").focus(); return; }
   try{
-    state = await api("POST","/api/types",{name, category: libCat, who});
-    el("libName").value = ""; render(); toast("已加入物品库");
+    state = await api("POST","/api/types",{name, category: libCat, floor: curFloor, who});
+    el("libName").value = ""; render(); toast(`已加进 ${curFloor} 的物品库`);
   }catch(e){ toast(e.message || "添加失败"); }
 }
 async function addCat(){
@@ -1127,10 +1523,11 @@ function renderAll(){
   if(!state) return;
   const q = (el("allQ").value || "").trim().toLowerCase();
   let parts = [], total = 0, kinds = 0;
-  state.rooms.forEach(r=>{
+  roomsNow().forEach(r=>{
     r.cabinets.forEach(c=>{
       const items = (c.items||[]).filter(i=> !q ||
-        [i.name, i.category, i.note, c.code, c.name, r.name].join(" ").toLowerCase().includes(q));
+        [i.name, i.category, i.note, c.code, c.name, r.name].join(" ").toLowerCase().includes(q))
+        .sort((a,b)=>a.name.localeCompare(b.name,"zh-Hans-CN"));
       if(!items.length) return;
       const sum = items.reduce((s,i)=>s+i.qty, 0);
       total += sum; kinds += items.length;
@@ -1143,13 +1540,8 @@ function renderAll(){
           <span class="catdot" style="background:${catColor(i.category)}"></span>
           <div class="body" onclick="openItemEdit(${i.id})"><b>${esc(i.name)}</b>
             <small>${esc(i.category)}${i.note?" · "+esc(i.note):""}</small></div>
-          <div class="qty">
-            <button onclick="bumpQty(${i.id},-1)">−</button>
-            <span>${i.qty}</span>
-            <button onclick="bumpQty(${i.id},1)">＋</button>
-          </div>
           <button class="mini-edit" onclick="openItemEdit(${i.id})" title="改名字/数量/备注">✎</button>
-          <button class="del" onclick="removeItem(${i.id})" title="取出">✕</button>
+          <button class="takeout" onclick="removeItem(${i.id})">取出</button>
         </div>`).join("")}
       </div>`);
     });
@@ -1178,6 +1570,7 @@ async function doSearch(q){
   if(!q){ box.classList.remove("on"); box.innerHTML=""; return; }
   let rows = [];
   try{ rows = (await api("GET","/api/search?q="+encodeURIComponent(q))).results; }catch(e){ rows=[]; }
+  rows = rows.filter(r=>(r.floor || "F3") === curFloor);
   box.classList.add("on");
   box.innerHTML = rows.length ? rows.map(r=>`
     <button class="res-card" onclick="openCab(${r.cabinet_id})">

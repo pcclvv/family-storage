@@ -25,7 +25,7 @@ CATEGORIES = ["被子", "床单", "被套", "枕头", "毛毯", "其他"]   # �
 ROOM_PREFIX = ["A", "B", "C", "D", "E", "F", "G", "H"]
 FLOORS = ["F2", "F3", "F4"]     # 楼层：每层房间与柜子结构相同，柜内物品各自独立
 DEFAULT_FLOOR = "F3"            # 首页默认进 F3
-PAGE_VER = "v1142"   # 页面版本号，前端拿它对比，不一致就强制重载（防手机缓存旧页面）
+PAGE_VER = "v1143"   # 页面版本号，前端拿它对比，不一致就强制重载（防手机缓存旧页面）
 _db_lock = threading.Lock()
 
 
@@ -95,7 +95,8 @@ def init_db():
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           name TEXT NOT NULL,
           category TEXT NOT NULL DEFAULT '其他',
-          sort INTEGER NOT NULL DEFAULT 0
+          sort INTEGER NOT NULL DEFAULT 0,
+          floor TEXT NOT NULL DEFAULT 'F3'
         );
         CREATE TABLE IF NOT EXISTS cats (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -177,23 +178,33 @@ def migrate(c):
     cb_cols2 = [r["name"] for r in c.execute("PRAGMA table_info(cabinets)")]
     if "floor" not in cb_cols2:
         c.execute("ALTER TABLE cabinets ADD COLUMN floor TEXT NOT NULL DEFAULT 'F3'")
+    # 物品库也按楼层分开：老物品库都归 F3，其余楼层各复制一份自己的
+    tp_cols = [r["name"] for r in c.execute("PRAGMA table_info(types)")]
+    if "floor" not in tp_cols:
+        c.execute("ALTER TABLE types ADD COLUMN floor TEXT NOT NULL DEFAULT 'F3'")
     ensure_floors(c)
     unknown = c.execute("SELECT * FROM items WHERE type_id=0").fetchall()
     for it in unknown:
         name = (it["name"] or "").strip() or "未命名物品"
         cat = it["category"] if it["category"] in CATEGORIES else "其他"
-        row = c.execute("SELECT id FROM types WHERE name=?", (name,)).fetchone()
+        it_floor = c.execute(
+            "SELECT COALESCE(NULLIF(r.floor,''),'F3') AS floor FROM cabinets cb "
+            "JOIN rooms r ON r.id=cb.room_id WHERE cb.id=?", (it["cabinet_id"],)).fetchone()
+        it_floor = (it_floor["floor"] if it_floor else None) or DEFAULT_FLOOR
+        row = c.execute("SELECT id FROM types WHERE name=? AND COALESCE(NULLIF(floor,''),'F3')=?",
+                        (name, it_floor)).fetchone()
         if row:
             tid = row["id"]
         else:
-            c.execute("INSERT INTO types(name,category,sort) VALUES(?,?,?)", (name, cat, 0))
+            c.execute("INSERT INTO types(name,category,sort,floor) VALUES(?,?,?,?)",
+                      (name, cat, 0, it_floor))
             tid = c.execute("SELECT last_insert_rowid() id").fetchone()["id"]
         c.execute("UPDATE items SET type_id=? WHERE id=?", (tid, it["id"]))
 
 
 def ensure_floors(c):
     """楼层结构：F2 / F3 / F4 每层的房间、柜子（数量/编号/大小/排序）完全一致，
-       各自独立的柜内物品。缺哪层就照参考层的结构镜像一份出来（不带物品）"""
+       各自独立的柜内物品与物品库（名称/分类可以各层单独改）。缺的照参考层镜像一份"""
     have = {r["floor"] or DEFAULT_FLOOR for r in c.execute("SELECT DISTINCT floor FROM rooms")}
     if not have:
         return
@@ -211,6 +222,31 @@ def ensure_floors(c):
                           "VALUES(?,?,?,?,?,?)",
                           (new_room, cab["code"], cab["name"], cab["size"], cab["sort"], fl))
         log(c, "系统", "楼层", "新增楼层 %s：房间和柜子布置与 %s 一致，物品单独存放" % (fl, tpl))
+    ensure_floor_types(c, tpl)
+
+
+def ensure_floor_types(c, tpl=DEFAULT_FLOOR):
+    """每层都要有自己的物品库：某层还没建过物品，就照参考层的名目复制一份（不带使用记录）"""
+    have = {r["floor"] or DEFAULT_FLOOR for r in c.execute("SELECT DISTINCT floor FROM types")}
+    if tpl not in have:
+        tpl = sorted(have)[0] if have else None
+    if not tpl:
+        return
+    tpl_types = [dict(r) for r in
+                 c.execute("SELECT * FROM types WHERE COALESCE(NULLIF(floor,''),'F3')=? ORDER BY sort, id",
+                           (tpl,))]
+    for fl in FLOORS:
+        if fl in have and fl != tpl:
+            continue
+        if fl == tpl:
+            continue
+        if not tpl_types:
+            continue
+        for t in tpl_types:
+            c.execute("INSERT INTO types(name, category, sort, floor) VALUES(?,?,?,?)",
+                      (t["name"], t["category"], t["sort"], fl))
+        log(c, "系统", "楼层", "楼层 %s 建好了自己的物品库（%d 种，和 %s 同样名目，各自增删）"
+            % (fl, len(tpl_types), tpl))
 
 
 def ensure_cats(c):
@@ -342,6 +378,7 @@ def get_state():
                     "cabinet_id": cab["id"], "qty": it["qty"], "floor": fl,
                     "label": "%s %s %s" % (fl, room["name"], cab["code"])}
     for t in types:
+        t["floor"] = t.get("floor") or DEFAULT_FLOOR
         t["places"] = places.get(t["id"], {})
         t["place"] = t["places"].get(DEFAULT_FLOOR) or next(iter(t["places"].values()), None)
     return {"rooms": rooms, "logs": logs, "types": types, "categories": cats, "cats": cats_rows,
@@ -351,7 +388,7 @@ def get_state():
 TABLE_COLS = {
     "rooms": {"id", "name", "sort", "floor"},
     "cabinets": {"id", "room_id", "code", "name", "size", "sort", "floor"},
-    "types": {"id", "name", "category", "sort"},
+    "types": {"id", "name", "category", "sort", "floor"},
     "cats": {"id", "name", "sort"},
     "items": {"id", "cabinet_id", "type_id", "name", "category", "qty", "note", "who",
               "created_at", "updated_at"},
@@ -503,21 +540,25 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, res)
         return self._send(404, {"error": "not found"})
 
-    # ---------- 物品库 ----------
+    # ---------- 物品库（按楼层分开） ----------
     def _add_type(self, b):
         name = (b.get("name") or "").strip()[:40]
         if not name:
             return self._send(400, {"error": "物品名称不能为空"})
         cat_in = (b.get("category") or "").strip()[:10]
+        fl = (b.get("floor") or "").strip().upper()
+        if fl not in FLOORS:
+            fl = DEFAULT_FLOOR
         who = self._who(b)
         with _db_lock:
             c = conn()
-            if c.execute("SELECT id FROM types WHERE name=?", (name,)).fetchone():
+            if c.execute("SELECT id FROM types WHERE name=? AND COALESCE(NULLIF(floor,''),'F3')=?",
+                         (name, fl)).fetchone():
                 c.close()
-                return self._send(400, {"error": "物品库里已经有「%s」了" % name})
+                return self._send(400, {"error": "%s 的物品库里已经有「%s」了" % (fl, name)})
             cat = ensure_cat(c, cat_in)
-            c.execute("INSERT INTO types(name, category, sort) VALUES(?,?,0)", (name, cat))
-            log(c, who, "物品库", "新增物品「%s」（%s）" % (name, cat))
+            c.execute("INSERT INTO types(name, category, sort, floor) VALUES(?,?,0,?)", (name, cat, fl))
+            log(c, who, "物品库", "%s 新增物品「%s」（%s）" % (fl, name, cat))
             c.commit()
             c.close()
         return self._send(200, get_state())
@@ -534,18 +575,21 @@ class Handler(BaseHTTPRequestHandler):
             if not row:
                 c.close()
                 return self._send(404, {"error": "物品不存在"})
+            fl = row["floor"] or DEFAULT_FLOOR
             if new_name:
-                dup = c.execute("SELECT id FROM types WHERE name=? AND id<>?", (new_name, tid)).fetchone()
+                dup = c.execute(
+                    "SELECT id FROM types WHERE name=? AND id<>? AND COALESCE(NULLIF(floor,''),'F3')=?",
+                    (new_name, tid, fl)).fetchone()
                 if dup:
                     c.close()
-                    return self._send(400, {"error": "物品库里已经有「%s」了" % new_name})
+                    return self._send(400, {"error": "%s 的物品库里已经有「%s」了" % (fl, new_name)})
                 c.execute("UPDATE types SET name=? WHERE id=?", (new_name, tid))
                 c.execute("UPDATE items SET name=? WHERE type_id=?", (new_name, tid))
             if cat_in is not None:
                 cat = ensure_cat(c, cat_in)
                 c.execute("UPDATE types SET category=? WHERE id=?", (cat, tid))
                 c.execute("UPDATE items SET category=? WHERE type_id=?", (cat, tid))
-            log(c, who, "物品库", "修改物品「%s」" % (new_name or row["name"]))
+            log(c, who, "物品库", "修改 %s 的物品「%s」" % (fl, new_name or row["name"]))
             c.commit()
             c.close()
         return self._send(200, get_state())
@@ -673,18 +717,26 @@ class Handler(BaseHTTPRequestHandler):
                 c.close()
                 return self._send(404, {"error": "柜子不存在"})
             # 优先按物品库 ID，其次按名称（没有就自动建一条基础数据）
+            # 物品库按楼层分开：只能用本层的物品
+            cab_floor = cab["floor"] or DEFAULT_FLOOR
             typ = None
             if b.get("typeId"):
                 typ = c.execute("SELECT * FROM types WHERE id=?", (int(b["typeId"]),)).fetchone()
+                if typ and (typ["floor"] or DEFAULT_FLOOR) != cab_floor:
+                    c.close()
+                    return self._send(400, {"error": "「%s」是 %s 的物品，%s 要用自己的物品库"
+                                                     % (typ["name"], typ["floor"] or DEFAULT_FLOOR, cab_floor)})
             if not typ:
                 name = (b.get("name") or "").strip()[:40]
                 if not name:
                     c.close()
                     return self._send(400, {"error": "先选一个物品"})
-                typ = c.execute("SELECT * FROM types WHERE name=?", (name,)).fetchone()
+                typ = c.execute("SELECT * FROM types WHERE name=? AND COALESCE(NULLIF(floor,''),'F3')=?",
+                                (name, cab_floor)).fetchone()
                 if not typ:
                     cat = b.get("category") if b.get("category") in CATEGORIES else "其他"
-                    c.execute("INSERT INTO types(name, category, sort) VALUES(?,?,0)", (name, cat))
+                    c.execute("INSERT INTO types(name, category, sort, floor) VALUES(?,?,0,?)",
+                              (name, cat, cab_floor))
                     typ = c.execute("SELECT * FROM types WHERE id=last_insert_rowid()").fetchone()
             # 一种物品只能待在一个柜子里：已经放在别处就不再重复放
             other = c.execute(
@@ -741,13 +793,23 @@ class Handler(BaseHTTPRequestHandler):
         args.append(item_id)
         with _db_lock:
             c = conn()
-            row = c.execute("SELECT i.*, t.name AS tname, cb.code, r.name AS rn FROM items i "
+            row = c.execute("SELECT i.*, t.name AS tname, cb.code, r.name AS rn, "
+                            "COALESCE(NULLIF(r.floor,''),'F3') AS floor "
+                            "FROM items i "
                             "JOIN cabinets cb ON cb.id=i.cabinet_id JOIN rooms r ON r.id=cb.room_id "
                             "LEFT JOIN types t ON t.id=i.type_id WHERE i.id=?", (item_id,)).fetchone()
             if not row:
                 c.close()
                 return self._send(404, {"error": "柜子里没有这件物品"})
             if "typeId" in b and args and args[0] != row["type_id"]:
+                tgt = c.execute("SELECT * FROM types WHERE id=?", (args[0],)).fetchone()
+                if not tgt:
+                    c.close()
+                    return self._send(400, {"error": "这个物品在物品库里找不到了"})
+                if (tgt["floor"] or DEFAULT_FLOOR) != row["floor"]:
+                    c.close()
+                    return self._send(400, {"error": "「%s」是 %s 的物品，%s 的柜子只能用本层物品库"
+                                                     % (tgt["name"], tgt["floor"] or DEFAULT_FLOOR, row["floor"])})
                 other = c.execute(
                     "SELECT i.qty, cb.code, r.name AS rn FROM items i "
                     "JOIN cabinets cb ON cb.id=i.cabinet_id JOIN rooms r ON r.id=cb.room_id "
