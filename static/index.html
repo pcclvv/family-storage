@@ -575,6 +575,8 @@ body.fb .cabs{display:block}
   touch-action:manipulation;
 }
 .floor-pill:active{transform:scale(.96)}
+.floor-pill em{font-style:normal;font-weight:600;font-size:11px;letter-spacing:0;opacity:.72;margin-left:5px}
+.floor-pill.on em{opacity:.85}
 .floor-pill.on{
   background:linear-gradient(180deg,#6F8C78,#4E6E5F);color:#fff;border-color:#46654F;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 5px 12px -5px rgba(78,110,95,.6);
@@ -583,6 +585,7 @@ body.fb .cabs{display:block}
 @media (max-width:600px){
   .floor-bar{margin:14px 0 0;gap:7px}
   .floor-pill{font-size:12.5px;padding:6px 13px}
+  .floor-pill em{font-size:10px;margin-left:4px}
   .floor-bar .fnote{display:none}
 }
 
@@ -618,8 +621,8 @@ body.fb .cabs{display:block}
 <div class="wrap">
   <div class="floor-bar" id="floorBar"></div>
   <div class="overview">
-    <div class="stat link" id="stTotalCard" onclick="openAll()" role="button" tabindex="0"><span>物品总数</span><b id="stTotal">0<i>件</i></b><em class="tap">点开看明细 ›</em></div>
-    <div class="stat link" id="stTypesCard" onclick="openLib()" role="button" tabindex="0"><span>物品品类</span><b id="stTypes">0<i>种</i></b><em class="tap">点开物品库 ›</em></div>
+    <div class="stat link" id="stTotalCard" onclick="openAll()" role="button" tabindex="0"><span id="stTotalLab">物品总数</span><b id="stTotal">0<i>件</i></b><em class="tap">点开看明细 ›</em></div>
+    <div class="stat link" id="stTypesCard" onclick="openLib()" role="button" tabindex="0"><span id="stTypesLab">物品品类</span><b id="stTypes">0<i>种</i></b><em class="tap">点开物品库 ›</em></div>
   </div>
 
   <div id="rooms"></div>
@@ -630,7 +633,7 @@ body.fb .cabs{display:block}
     <div class="logs" id="logs"></div>
   </div>
 
-  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1143</span></div>
+  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1144</span></div>
 </div>
 
 <div class="mask" id="mask"></div>
@@ -789,7 +792,7 @@ body.fb .cabs{display:block}
 <div class="toast" id="toast"></div>
 
 <script>
-const VER = "v1143";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
+const VER = "v1144";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
 const BASE_COLOR = {"被子":"#9DC0AD","床单":"#E3C878","被套":"#DDA077","枕头":"#A9BEDB","毛毯":"#CFA6C0","其他":"#C3B9AA"};
 const PALETTE = ["#8FB0A8","#D9B36C","#B3A0C9","#C7A98B","#94AEBB","#D6A0A0","#A8B98E"];
 /* 种类来自后端，可以自己加，颜色按顺序分配 */
@@ -877,8 +880,14 @@ function placeOf(t){
 function renderFloorBar(){
   const bar = el("floorBar");
   if(!bar) return;
+  /* 每层的累计件数，跟着数据实时变 */
+  const cnt = {};
+  ((state && state.rooms) || []).forEach(r=>{
+    const f = r.floor || "F3";
+    cnt[f] = (cnt[f] || 0) + (r.count || 0);
+  });
   bar.innerHTML = '<span class="lab">楼层</span>' + floors().map(f=>
-    `<button class="floor-pill ${f===curFloor?"on":""}" onclick="setFloor('${f}')">${f}</button>`
+    `<button class="floor-pill ${f===curFloor?"on":""}" onclick="setFloor('${f}')">${f}<em>${cnt[f]||0}件</em></button>`
   ).join("") + '<span class="fnote">每层柜子布置一样，东西各放各的</span>';
 }
 function setFloor(f){
@@ -896,6 +905,8 @@ function render(){
   const rooms = roomsNow();
   let total = 0;
   rooms.forEach(r=>{ total += r.count; });
+  if(el("stTotalLab")) el("stTotalLab").textContent = curFloor + " 物品总数";
+  if(el("stTypesLab")) el("stTypesLab").textContent = curFloor + " 物品品类";
   el("stTotal").innerHTML = total + "<i>件</i>";
   const kindsInFloor = (state.types || []).filter(t=>placeOf(t)).length;
   el("stTypes").innerHTML = kindsInFloor + "<i>种</i>";
