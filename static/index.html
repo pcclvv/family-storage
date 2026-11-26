@@ -525,7 +525,7 @@ button,.tab,.top-btn,.cab,.room-add,.icon-btn{touch-action:manipulation;-webkit-
     <div class="logs" id="logs"></div>
   </div>
 
-  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1134</span> <span id="kern"></span></div>
+  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1135</span> <span id="kern"></span></div>
 </div>
 
 <div class="mask" id="mask"></div>
@@ -684,7 +684,7 @@ button,.tab,.top-btn,.cab,.room-add,.icon-btn{touch-action:manipulation;-webkit-
 <div class="toast" id="toast"></div>
 
 <script>
-const VER = "v1134";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
+const VER = "v1135";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
 const BASE_COLOR = {"被子":"#9DC0AD","床单":"#E3C878","被套":"#DDA077","枕头":"#A9BEDB","毛毯":"#CFA6C0","其他":"#C3B9AA"};
 const PALETTE = ["#8FB0A8","#D9B36C","#B3A0C9","#C7A98B","#94AEBB","#D6A0A0","#A8B98E"];
 /* 种类来自后端，可以自己加，颜色按顺序分配 */
@@ -783,9 +783,11 @@ function render(){
         <button class="room-add" onclick="addCabinet(${r.id})">＋ 柜子</button>
       </div>
       <div class="${cls}">${rows.map(row=>row.length?
-        `<div class="cab-row" style="gap:${GP}%">${row.map(c=>cabHTML(r,c,U,K,GP)).join("")}</div>`:"").join("")}</div>
+        `<div class="cab-row" data-u="${U}" data-k="${K}" style="gap:12px">${row.map(c=>cabHTML(r,c,U,K,GP)).join("")}</div>`:"").join("")}</div>
     </section>`;
   }).join("");
+
+  layoutRows();          /* JS 量出实际像素宽，给每张卡片写死像素宽度（兼容所有内核） */
 
   el("logs").innerHTML = state.logs.length ? state.logs.map(l=>`
     <div class="log-row">
@@ -798,6 +800,25 @@ function render(){
   if(el("libSheet").classList.contains("on")) renderLib();
   if(el("allSheet").classList.contains("on")) renderAll();
 }
+
+/* JS 像素排版：量出每行实际宽度，按「单位宽 = (行宽 - 间隙)/U」给每张卡片写死像素宽度。
+   不依赖任何 CSS 宽度特性（calc/var/百分比在部分手机内核上不可靠），像素值所有内核都支持 */
+function layoutRows(){
+  const GAP = 12;
+  document.querySelectorAll(".cab-row").forEach(rw=>{
+    const kids = rw.children;
+    if(!kids.length) return;
+    const U = +rw.dataset.u || 4;
+    const K = +rw.dataset.k || kids.length;
+    const unit = (rw.clientWidth - (K-1)*GAP) / U;
+    for(const c of kids){
+      c.style.flex = "0 0 auto";
+      c.style.width = ((+c.dataset.wu || 2) * unit).toFixed(2) + "px";
+    }
+  });
+}
+window.addEventListener("resize", layoutRows);
+window.addEventListener("orientationchange", ()=>setTimeout(layoutRows, 120));
 
 /* 柜子自动分两行：按顺序找两行总宽最接近的切分点，两行都至少 2 个柜子；
    ≤3 个柜子时排一行。宽度不在这里定，由 U（每行半格数）统一算 */
@@ -834,7 +855,9 @@ function cabHTML(room, cab, U, K, GP){
      纯百分比，不用 calc/var，任何内核都生效；任何行、任何房间里大柜完全等宽 */
   const wu = isHalf ? 1 : 2;
   const wpct = (wu * (100 - (K-1)*GP) / U).toFixed(3);
-  const width = `width:${wpct}%;flex:0 0 auto`;
+  /* 先给百分比作为初始值，layoutRows() 随后改成精确像素宽（部分手机内核对
+     calc/var 甚至百分比宽度都有兼容问题，像素值是最保险的） */
+  const width = `width:${wpct}%;flex:0 1 ${wpct}%`;
   const maxShown = isHalf ? 7 : 4;
   const shown = items.slice(0, maxShown);
   const inner = items.length
@@ -850,7 +873,7 @@ function cabHTML(room, cab, U, K, GP){
     ? `<div class="cab-door single"><i class="handle"></i></div>`
     : `<div class="cab-door left"><i class="handle"></i></div><div class="cab-door right"><i class="handle"></i></div>`;
   return `
-    <button class="cab ${isHalf?"half":""}" style="${width}" onclick="openCab(${cab.id})" data-cab="${cab.id}" title="${esc(cab.code)}${cab.name?" "+esc(cab.name):""}">
+    <button class="cab ${isHalf?"half":""}" style="${width}" data-wu="${wu}" onclick="openCab(${cab.id})" data-cab="${cab.id}" title="${esc(cab.code)}${cab.name?" "+esc(cab.name):""}">
       <div class="cab-head">
         <span class="cab-code">${esc(cab.code)}</span>
         ${cab.name?`<span class="cab-name">${esc(cab.name)}</span>`:""}
