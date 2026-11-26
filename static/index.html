@@ -204,19 +204,34 @@ header.top{
 .ins-empty{font-size:9.5px;color:rgba(255,246,230,.66);text-align:center;margin:auto}
 .cab:hover .ins-line{filter:saturate(106%) brightness(1.03)}
 
-/* 半透明柜门：透明度可在「柜子设置 → 柜门玻璃」里调，全家人同步 */
+/* 玻璃柜门：透明 + 斜向反光，能隔着门看到里面的东西；
+   透明度在「柜子设置 → 柜门玻璃」里调，全家人同步 */
 .cab-door{
   position:absolute;top:0;bottom:0;width:50%;z-index:2;
-  background:linear-gradient(150deg,rgba(255,252,244,var(--dg1,.55)),rgba(235,223,200,var(--dg2,.42)) 58%,rgba(210,192,162,var(--dg3,.48)));
-  border:1px solid rgba(255,255,255,.6);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.62),inset 0 0 12px rgba(255,255,255,.22),0 1px 4px rgba(110,86,54,.12);
-  backdrop-filter:blur(var(--dgBlur,1.5px)) saturate(110%);
-  -webkit-backdrop-filter:blur(var(--dgBlur,1.5px)) saturate(110%);
-  transition:transform .5s cubic-bezier(.2,.85,.2,1),box-shadow .3s,background .3s;
+  background:linear-gradient(160deg,
+    rgba(255,255,255,var(--dg1,.30)) 0%,
+    rgba(250,244,232,var(--dg2,.12)) 42%,
+    rgba(238,226,202,var(--dg3,.14)) 72%,
+    rgba(255,255,255,var(--dg4,.24)) 100%);
+  border:1px solid rgba(255,255,255,.78);
+  box-shadow:inset 0 0 0 2px rgba(122,96,60,.14),inset 0 1px 0 rgba(255,255,255,.75),0 1px 4px rgba(110,86,54,.16);
+  backdrop-filter:saturate(112%) blur(var(--dgBlur,.4px));
+  -webkit-backdrop-filter:saturate(112%) blur(var(--dgBlur,.4px));
+  transition:transform .42s cubic-bezier(.2,.85,.2,1),box-shadow .3s,background .3s;
   overflow:hidden;
 }
-body[data-door="clear"]{--dg1:.18;--dg2:.10;--dg3:.14;--dgBlur:.5px}
-body[data-door="solid"]{--dg1:.97;--dg2:.95;--dg3:.94;--dgBlur:6px}
+.cab-door::before{ /* 斜向玻璃反光带 */
+  content:"";position:absolute;inset:0;
+  background:linear-gradient(115deg,
+    rgba(255,255,255,0) 10%,
+    rgba(255,255,255,.50) 24%,
+    rgba(255,255,255,.05) 38%,
+    rgba(255,255,255,0) 58%,
+    rgba(255,255,255,.30) 80%,
+    rgba(255,255,255,0) 95%);
+}
+body[data-door="clear"]{--dg1:.10;--dg2:.03;--dg3:.05;--dg4:.10;--dgBlur:.3px}
+body[data-door="solid"]{--dg1:.97;--dg2:.95;--dg3:.94;--dg4:.96;--dgBlur:6px}
 .cab-door::before{ /* 玻璃斜向高光 */
   content:"";position:absolute;inset:0;
   background:linear-gradient(115deg,rgba(255,255,255,.30) 0%,rgba(255,255,255,.05) 36%,rgba(255,255,255,0) 52%,rgba(255,255,255,.13) 100%);
@@ -231,6 +246,10 @@ body[data-door="solid"]{--dg1:.97;--dg2:.95;--dg3:.94;--dgBlur:6px}
 .cab:hover .cab-door.left{transform:rotateY(-17deg);box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 6px 16px rgba(90,70,42,.16)}
 .cab:hover .cab-door.right{transform:rotateY(17deg);box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 6px 16px rgba(90,70,42,.16)}
 .cab:hover .cab-door.single{transform:rotateY(-14deg);box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 8px 20px rgba(90,70,42,.18)}
+/* 手机上点柜子：门先弹开再进明细 */
+.cab.open-doors .cab-door.left{transform:rotateY(-62deg)}
+.cab.open-doors .cab-door.right{transform:rotateY(62deg)}
+.cab.open-doors .cab-door.single{transform:rotateY(-55deg)}
 .handle{position:absolute;top:50%;width:4px;height:24px;border-radius:3px;
   background:linear-gradient(180deg,#F1DCA8,#CBA65F 46%,#A98842);
   box-shadow:0 1px 2px rgba(80,60,30,.4),inset 0 1px 0 rgba(255,255,255,.55);
@@ -773,14 +792,24 @@ function findItem(id){
 function openCab(id){
   const hit = findCab(id);
   if(!hit) return;
-  currentCab = id;
-  switchTab("items");
-  el("cabName").value = hit.cab.name || "";
-  el("cabCode").value = hit.cab.code || "";
-  refreshSheet();
-  el("mask").classList.add("on");
-  el("sheet").classList.add("on");
-  el("sheet").setAttribute("aria-hidden","false");
+  const go = ()=>{
+    currentCab = id;
+    switchTab("items");
+    el("cabName").value = hit.cab.name || "";
+    el("cabCode").value = hit.cab.code || "";
+    refreshSheet();
+    el("mask").classList.add("on");
+    el("sheet").classList.add("on");
+    el("sheet").setAttribute("aria-hidden","false");
+  };
+  /* 手机上也能看到柜门打开的效果 */
+  const card = document.querySelector('.cab[data-cab="'+id+'"]');
+  if(card && !window.matchMedia("(prefers-reduced-motion: reduce)").matches){
+    card.classList.add("open-doors");
+    setTimeout(()=>{ go(); card.classList.remove("open-doors"); }, 340);
+  }else{
+    go();
+  }
 }
 function closeSheet(){
   el("mask").classList.remove("on");
