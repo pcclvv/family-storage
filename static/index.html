@@ -633,7 +633,7 @@ body.fb .cabs{display:block}
     <div class="logs" id="logs"></div>
   </div>
 
-  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1147</span></div>
+  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1148</span></div>
 </div>
 
 <div class="mask" id="mask"></div>
@@ -800,7 +800,7 @@ body.fb .cabs{display:block}
 <div class="toast" id="toast"></div>
 
 <script>
-const VER = "v1147";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
+const VER = "v1148";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
 const BASE_COLOR = {"被子":"#9DC0AD","床单":"#E3C878","被套":"#DDA077","枕头":"#A9BEDB","毛毯":"#CFA6C0","其他":"#C3B9AA"};
 const PALETTE = ["#8FB0A8","#D9B36C","#B3A0C9","#C7A98B","#94AEBB","#D6A0A0","#A8B98E"];
 /* 种类来自后端，可以自己加，颜色按顺序分配 */
@@ -885,7 +885,14 @@ function placeOf(t){
   if(t.places) return t.places[curFloor] || null;
   return t.place || null;
 }
-/* 每层柜内累计 / 使用中累计（使用中 = 没进柜子但在用的，如冬天床上盖的被子） */
+/* 柜外件数：没放进柜子、但在家里的存货。
+   填了「在用」就按在用算；没填也没进柜子，默认算 1 件（物品库里列了就说明家里有） */
+function outsideOf(t){
+  const use = t.inuse || 0;
+  if(use > 0) return use;
+  return placeOf(t) ? 0 : 1;
+}
+/* 每层柜内累计 / 柜外累计 */
 function floorCab(f){
   let n = 0;
   ((state && state.rooms) || []).forEach(r=>{ if((r.floor || "F3") === f) n += (r.count || 0); });
@@ -893,7 +900,7 @@ function floorCab(f){
 }
 function floorUse(f){
   return ((state && state.types) || [])
-    .filter(t=>(t.floor || "F3") === f).reduce((s,t)=>s + (t.inuse || 0), 0);
+    .filter(t=>(t.floor || "F3") === f).reduce((s,t)=>s + outsideOf(t), 0);
 }
 function renderFloorBar(){
   const bar = el("floorBar");
@@ -926,7 +933,7 @@ function render(){
   el("stTypes").innerHTML = (cabTotal + useTotal) + "<i>件</i>";
   const tap2 = el("stTypesCard") && el("stTypesCard").querySelector(".tap");
   if(tap2) tap2.textContent = useTotal
-    ? `含在用 ${useTotal} 件 ›`
+    ? `柜外还有 ${useTotal} 件 ›`
     : "点开物品库 ›";
   renderFloorBar();
 
@@ -1451,16 +1458,16 @@ function closeLib(){
 }
 function renderLib(){
   const types = typesNow().slice().sort((a,b)=>a.name.localeCompare(b.name,"zh-Hans-CN"));
-  const useSum = types.reduce((s,t)=>s + (t.inuse||0), 0);
+  const outSum = types.reduce((s,t)=>s + outsideOf(t), 0);
   el("libSub").textContent = types.length
-    ? `${curFloor} 共 ${types.length} 种 · 柜内 ${floorCab(curFloor)} 件${useSum?" · 在用 "+useSum+" 件":""}（其他楼层各有一份自己的）`
+    ? `${curFloor} 共 ${types.length} 种 · 柜内 ${floorCab(curFloor)} 件 · 柜外 ${outSum} 件（其他楼层各有一份自己的）`
     : `${curFloor} 的物品库还没有东西，先在下面加一个`;
   el("libList").innerHTML = types.length ? types.map(t=>`
     <div class="lib-row">
       <span class="cat" style="width:9px;height:9px;border-radius:50%;background:${catColor(t.category)};flex:0 0 auto"></span>
       <div class="body" onclick="openTypeEdit(${t.id})">
         <b>${esc(t.name)}${t.inuse?" <em style='font-style:normal;font-size:10.5px;color:#8A6A3B;background:#FBF0D9;border:1px solid #EBD9AE;border-radius:999px;padding:1px 6px;margin-left:4px'>在用 "+t.inuse+"</em>":""}</b>
-        <small>${esc(t.category)} · ${placeOf(t) ? "在 "+esc(placeOf(t).room)+" "+esc(placeOf(t).code)+"（"+placeOf(t).qty+" 件）" : curFloor+" 还没放进柜子"}${t.inuse?" · 使用中 "+t.inuse+" 件":""}</small>
+        <small>${esc(t.category)} · ${placeOf(t) ? "在 "+esc(placeOf(t).room)+" "+esc(placeOf(t).code)+"（"+placeOf(t).qty+" 件）" : curFloor+" 还没放进柜子（柜外 "+outsideOf(t)+" 件）"}${t.inuse?" · 使用中 "+t.inuse+" 件":""}</small>
       </div>
       <button class="mini-edit" onclick="openTypeEdit(${t.id})" title="改名/换分类/改在用数量">✎</button>
       <button class="del" onclick="delType(${t.id})" title="删除">🗑</button>
@@ -1605,30 +1612,32 @@ function renderAll(){
       </div>`);
     });
   });
-  /* 使用中：没放进柜子，但在家里用着的那几件 */
-  const useTypes = typesNow().filter(t=>(t.inuse||0) > 0 && (!q ||
-      [t.name, t.category, "在用", "使用中", "不在柜子"].join(" ").toLowerCase().includes(q)))
+  /* 柜外：没放进柜子、但家里有的（在用 / 存货），默认至少 1 件 */
+  const outTypes = typesNow().filter(t=>outsideOf(t) > 0 && (!q ||
+      [t.name, t.category, "在用", "使用中", "不在柜子", "柜外"].join(" ").toLowerCase().includes(q)))
     .sort((a,b)=>a.name.localeCompare(b.name,"zh-Hans-CN"));
-  const useTotal = useTypes.reduce((s,t)=>s + t.inuse, 0);
-  if(useTypes.length){
-    total += useTotal; kinds += useTypes.length;
+  const useTotal = outTypes.reduce((s,t)=>s + outsideOf(t), 0);
+  if(outTypes.length){
+    total += useTotal; kinds += outTypes.length;
     parts.push(`<div class="all-group">
       <div class="all-ghead">
-        <b>在用 · 不在柜子里</b><span>正在使用</span>
+        <b>柜外 · 没在柜子里</b><span>在家用着/放着</span>
         <span class="cnt">${useTotal} 件</span>
       </div>
-      ${useTypes.map(t=>`<div class="all-row">
+      ${outTypes.map(t=>`<div class="all-row">
         <span class="catdot" style="background:${catColor(t.category)}"></span>
         <div class="body" onclick="openTypeEdit(${t.id})"><b>${esc(t.name)}</b>
-          <small>${esc(t.category)} · 使用中 ${t.inuse} 件，要收起来就放进柜子</small></div>
-        <button class="mini-edit" onclick="bumpInUse(${t.id},-1)" title="少一件在用">−</button>
-        <button class="mini-edit" onclick="bumpInUse(${t.id},1)" title="多一件在用">＋</button>
+          <small>${esc(t.category)} · ${(t.inuse||0) > 0
+            ? "使用中 " + t.inuse + " 件，收进柜子就少一件"
+            : "还没放进柜子 · 按 1 件算"}</small></div>
+        ${(t.inuse||0) > 0 ? `<button class="mini-edit" onclick="bumpInUse(${t.id},-1)" title="少一件在用">−</button>
+        <button class="mini-edit" onclick="bumpInUse(${t.id},1)" title="多一件在用">＋</button>` : ""}
       </div>`).join("")}
     </div>`);
   }
   el("allSub").textContent = q
-    ? `筛出 ${kinds} 种 · 共 ${total} 件（含在用 ${useTotal} 件）`
-    : `共 ${kinds} 种 · ${total} 件（含在用 ${useTotal} 件），点名字就能直接改`;
+    ? `筛出 ${kinds} 种 · 共 ${total} 件（柜外 ${useTotal} 件）`
+    : `共 ${kinds} 种 · ${total} 件（柜外 ${useTotal} 件），点名字就能直接改`;
   el("allList").innerHTML = parts.length ? parts.join("")
     : `<div class="empty-state"><span class="big">🔍</span>没有找到对应的东西</div>`;
 }
