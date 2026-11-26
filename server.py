@@ -25,7 +25,7 @@ CATEGORIES = ["被子", "床单", "被套", "枕头", "毛毯", "其他"]   # �
 ROOM_PREFIX = ["A", "B", "C", "D", "E", "F", "G", "H"]
 FLOORS = ["F2", "F3", "F4"]     # 楼层：每层房间与柜子结构相同，柜内物品各自独立
 DEFAULT_FLOOR = "F3"            # 首页默认进 F3
-PAGE_VER = "v1148"   # 页面版本号，前端拿它对比，不一致就强制重载（防手机缓存旧页面）
+PAGE_VER = "v1149"   # 页面版本号，前端拿它对比，不一致就强制重载（防手机缓存旧页面）
 _db_lock = threading.Lock()
 
 
@@ -327,8 +327,10 @@ def get_state():
     cfg = {r["key"]: r["value"] for r in c.execute("SELECT * FROM config")}
     for it in items:
         if it.get("tname"):
-            it["name"] = it["tname"]
             it["category"] = it["tcat"] or it["category"]
+            # 柜子底部手动新增时可自定义名字：只有没改过名的才跟着类型名走
+            if not it["name"] or it["name"] == it["tname"]:
+                it["name"] = it["tname"]
     usage = {}
     for it in items:
         usage[it["type_id"]] = usage.get(it["type_id"], 0) + 1
@@ -569,7 +571,9 @@ class Handler(BaseHTTPRequestHandler):
                     c.close()
                     return self._send(400, {"error": "%s 的物品库里已经有「%s」了" % (fl, new_name)})
                 c.execute("UPDATE types SET name=? WHERE id=?", (new_name, tid))
-                c.execute("UPDATE items SET name=? WHERE type_id=?", (new_name, tid))
+                # 只同步没改过名的物品，手动起的名字保持不变
+                c.execute("UPDATE items SET name=? WHERE type_id=? AND name=?",
+                          (new_name, tid, row["name"]))
             if cat_in is not None:
                 cat = ensure_cat(c, cat_in)
                 c.execute("UPDATE types SET category=? WHERE id=?", (cat, tid))
@@ -740,17 +744,22 @@ class Handler(BaseHTTPRequestHandler):
                                                  % (typ["name"], other["rn"], other["code"], other["qty"])})
             exist = c.execute("SELECT * FROM items WHERE cabinet_id=? AND type_id=?",
                               (cab_id, typ["id"])).fetchone()
+            # 柜子底部手动新增时可以自定义显示名（类型仍在物品库维护，只做挂靠）
+            disp = (b.get("name") or "").strip()[:40] if b.get("typeId") else ""
+            if disp and disp == typ["name"]:
+                disp = ""
             if exist:
                 newqty = min(999, exist["qty"] + qty)
                 c.execute("UPDATE items SET qty=?, note=?, updated_at=? WHERE id=?",
                           (newqty, note or exist["note"], ts, exist["id"]))
-                log(c, who, "添加", "%s %s 的「%s」加到 %d 件" % (cab["name"], cab["code"], typ["name"], newqty))
+                log(c, who, "添加", "%s %s 的「%s」加到 %d 件" % (cab["name"], cab["code"], exist["name"], newqty))
             else:
+                item_name = disp or typ["name"]
                 c.execute(
                     "INSERT INTO items(cabinet_id,type_id,name,category,qty,note,who,created_at,updated_at) "
                     "VALUES(?,?,?,?,?,?,?,?,?)",
-                    (cab_id, typ["id"], typ["name"], typ["category"], qty, note, who, ts, ts))
-                log(c, who, "添加", "%s %s 放入「%s」×%d" % (cab["name"], cab["code"], typ["name"], qty))
+                    (cab_id, typ["id"], item_name, typ["category"], qty, note, who, ts, ts))
+                log(c, who, "添加", "%s %s 放入「%s」×%d" % (cab["name"], cab["code"], item_name, qty))
             c.commit()
             c.close()
         return self._send(200, get_state())
