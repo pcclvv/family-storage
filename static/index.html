@@ -290,6 +290,54 @@ button,.tab,.top-btn,.cab,.room-add,.icon-btn{touch-action:manipulation;-webkit-
 /* 底部与大柜完全一致（同样的字号、内边距、左对齐），高度自然一样 */
 .cab.half:hover .cab-door.single{transform:rotateY(-12deg)}
 
+/* ---------- 手机端柜子：平面渲染，不依赖绝对定位 ----------
+   部分手机浏览器（微信/X5 内核等）对 <button> 内部的绝对定位子元素不绘制，
+   导致木纹底、玻璃门整体消失。手机端全部改用普通流 + 多重背景图层实现：
+   木纹、玻璃反光、门缝、门把手都是 background 图层，普通流里的物品条直接排在柜体上 */
+@media (max-width:600px){
+  .cab-body{
+    height:118px;margin:9px 11px 0;border-radius:9px;overflow:hidden;
+    box-sizing:border-box;border:1px solid rgba(255,255,255,.55);
+    box-shadow:0 8px 14px -9px rgba(84,64,40,.45);
+    display:flex;flex-direction:column;justify-content:flex-end;gap:3px;
+    padding:12px 8px 8px;
+    transition:transform .25s ease,opacity .25s ease;
+    /* 图层从上到下：门把手 / 玻璃反光带 / 玻璃白罩 / 柜体木纹 */
+    background-image:
+      linear-gradient(180deg,#F1DCA8,#CBA65F 46%,#A98842),
+      linear-gradient(115deg,rgba(255,255,255,0) 8%,rgba(255,255,255,.5) 22%,rgba(255,255,255,.08) 38%,rgba(255,255,255,0) 55%,rgba(255,255,255,.3) 78%,rgba(255,255,255,0) 95%),
+      linear-gradient(rgba(255,255,255,.16),rgba(255,255,255,.16)),
+      linear-gradient(160deg,#8A7460,#74604B 55%,#63503C);
+    background-size:5px 26px,auto,auto,auto;
+    background-position:right 7px center,0 0,0 0,0 0;
+    background-repeat:no-repeat;
+  }
+  /* 双门柜：门缝 + 把手在正中间；半格柜保持右边把手 */
+  .cab-body.twin{
+    background-image:
+      linear-gradient(90deg,rgba(255,255,255,0) 49%,rgba(255,255,255,.4) 49%,rgba(255,255,255,.4) 51%,rgba(255,255,255,0) 51%),
+      linear-gradient(180deg,#F1DCA8,#CBA65F 46%,#A98842),
+      linear-gradient(115deg,rgba(255,255,255,0) 8%,rgba(255,255,255,.5) 22%,rgba(255,255,255,.08) 38%,rgba(255,255,255,0) 55%,rgba(255,255,255,.3) 78%,rgba(255,255,255,0) 95%),
+      linear-gradient(rgba(255,255,255,.16),rgba(255,255,255,.16)),
+      linear-gradient(160deg,#8A7460,#74604B 55%,#63503C);
+    background-size:2px 100%,5px 26px,auto,auto,auto;
+    background-position:center center,center center,0 0,0 0,0 0;
+    background-repeat:no-repeat;
+  }
+  /* 柜内结构退化为普通流，物品条直接排在柜体上 */
+  .cab-frame,.cab-frame .cab-inside{
+    position:static;width:auto;height:auto;margin:0;border-radius:0;
+    background:none;box-shadow:none;overflow:visible;
+    display:flex;flex-direction:column;justify-content:flex-end;gap:3px;padding:0;
+  }
+  .cab-frame::before,.cab-frame::after{display:none}
+  .cab-door,.handle{display:none}
+  .cab.half .cab-frame,.cab.half .cab-frame .cab-inside{gap:2px}
+  .cab.half .cab-inside{padding:0}
+  /* 点柜子时的开门反馈：整柜轻缩一下（不用 3D） */
+  .cab.open-doors .cab-body{transform:scale(.94);opacity:.85}
+}
+
 /* ---------- 搜索结果 ---------- */
 .results{margin-top:18px;display:none}
 .results.on{display:block}
@@ -475,7 +523,7 @@ button,.tab,.top-btn,.cab,.room-add,.icon-btn{touch-action:manipulation;-webkit-
     <div class="logs" id="logs"></div>
   </div>
 
-  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1128</span> <span id="kern"></span></div>
+  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1129</span> <span id="kern"></span></div>
 </div>
 
 <div class="mask" id="mask"></div>
@@ -634,7 +682,7 @@ button,.tab,.top-btn,.cab,.room-add,.icon-btn{touch-action:manipulation;-webkit-
 <div class="toast" id="toast"></div>
 
 <script>
-const VER = "v1128";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
+const VER = "v1129";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
 const BASE_COLOR = {"被子":"#9DC0AD","床单":"#E3C878","被套":"#DDA077","枕头":"#A9BEDB","毛毯":"#CFA6C0","其他":"#C3B9AA"};
 const PALETTE = ["#8FB0A8","#D9B36C","#B3A0C9","#C7A98B","#94AEBB","#D6A0A0","#A8B98E"];
 /* 种类来自后端，可以自己加，颜色按顺序分配 */
@@ -802,7 +850,7 @@ function cabHTML(room, cab, U){
         ${cab.name?`<span class="cab-name">${esc(cab.name)}</span>`:""}
         ${cab.count?`<span class="cab-count ${cab.count>=6?"hot":""}" title="共 ${cab.count} 件">${isHalf ? cab.count : cab.count + " 件"}</span>`:""}
       </div>
-      <div class="cab-body">
+      <div class="cab-body ${isHalf?"":"twin"}">
         <div class="cab-frame"><div class="cab-inside">${inner}</div></div>
         ${doors}
       </div>
