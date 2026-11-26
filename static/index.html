@@ -8,7 +8,7 @@
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>展展家里的柜子 · 家庭储物管家</title>
+<title>展展家的柜子 · 家庭储物管家</title>
 <style>
 :root{
   --bg:#F5F1E8;
@@ -347,9 +347,6 @@ body.fb .cabs .cab-row{display:block}
 body.fb .cabs .cab{display:block;width:auto !important;min-width:0 !important;max-width:none !important;
   flex:none !important;margin:0 0 12px}
 body.fb .cabs{display:block}
-.diag-bar{display:none;font-size:11px;color:#8A9B8E;background:#EFF5EF;border:1px solid #D8E5D8;
-  border-radius:8px;padding:4px 10px;margin:8px 0 0;text-align:center}
-.diag-bar.warn{color:#9A6B2F;background:#F9F1E2;border-color:#EAD9BC}
 
 /* ---------- 搜索结果 ---------- */
 .results{margin-top:18px;display:none}
@@ -503,7 +500,7 @@ body.fb .cabs{display:block}
         <svg viewBox="0 0 24 24"><path d="M3.5 10.5 12 3.6l8.5 6.9"/><path d="M5.5 9.6V20h13V9.6"/><path d="M9.6 20v-5.4h4.8V20"/></svg>
       </div>
       <div>
-        <h1>展展家里的柜子</h1>
+        <h1>展展家的柜子</h1>
         <p>被子床单，放哪儿一看就知道</p>
       </div>
     </div>
@@ -521,7 +518,7 @@ body.fb .cabs{display:block}
     </button>
   </div>
 </header>
-<div class="wrap"><div class="diag-bar" id="diagBar"></div>
+<div class="wrap">
   <div class="overview">
     <div class="stat link" id="stTotalCard" onclick="openAll()" role="button" tabindex="0"><span>物品总数</span><b id="stTotal">0<i>件</i></b><em class="tap">点开看明细 ›</em></div>
     <div class="stat link" id="stTypesCard" onclick="openLib()" role="button" tabindex="0"><span>物品品类</span><b id="stTypes">0<i>种</i></b><em class="tap">点开物品库 ›</em></div>
@@ -535,7 +532,7 @@ body.fb .cabs{display:block}
     <div class="logs" id="logs"></div>
   </div>
 
-  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1138</span> <span id="kern"></span> <span id="diag"></span></div>
+  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1139</span></div>
 </div>
 
 <div class="mask" id="mask"></div>
@@ -694,7 +691,7 @@ body.fb .cabs{display:block}
 <div class="toast" id="toast"></div>
 
 <script>
-const VER = "v1138";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
+const VER = "v1139";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
 const BASE_COLOR = {"被子":"#9DC0AD","床单":"#E3C878","被套":"#DDA077","枕头":"#A9BEDB","毛毯":"#CFA6C0","其他":"#C3B9AA"};
 const PALETTE = ["#8FB0A8","#D9B36C","#B3A0C9","#C7A98B","#94AEBB","#D6A0A0","#A8B98E"];
 /* 种类来自后端，可以自己加，颜色按顺序分配 */
@@ -762,13 +759,6 @@ async function load(){
 function render(){
   if(!state) return;
   applyDoor();
-  /* 底部诊断：内核大版本 + 是否走了兼容写法，手机截图就能看出加载的是哪版 */
-  (function(){
-    const m = navigator.userAgent.match(/Chrome\/(\d+)/);
-    let ins = false;
-    try{ ins = !!(window.CSS && CSS.supports && CSS.supports("inset","0px")); }catch(e){}
-    el("kern").textContent = "· 内核 " + (m ? m[1] : "?") + (ins ? "" : " · 兼容");
-  })();
   el("whoName").textContent = who || "家人";
   let total = 0;
   state.rooms.forEach(r=>{ total += r.count; });
@@ -878,20 +868,10 @@ function layoutRows(){
     if(!sheet){ sheet = document.createElement("style"); sheet.id = "pxSheet"; document.head.appendChild(sheet); }
     sheet.textContent = broken ? "" : (css || "");
   }catch(_){}
-  /* 自检不过 → 切换简洁模式：柜子全宽堆叠，任何内核都不会乱 */
+  /* 自检不过 → 切换简洁模式：柜子全宽堆叠，任何内核都不会乱（不显示任何提示文字） */
   const broken = bad > 0;
   if(document.body.className.indexOf("fb") >= 0 !== broken){
     document.body.className = broken ? document.body.className + " fb" : document.body.className.replace(/\s*\bfb\b/g, "");
-  }
-  const d = document.getElementById("diag");
-  const bar = document.getElementById("diagBar");
-  const txt = broken ? "检测到浏览器排版异常，已切换简洁模式（柜子全宽堆叠）"
-                     : (ok ? "排版正常 " + info : "排版准备中…");
-  if(d) d.textContent = txt;
-  if(bar){
-    bar.textContent = txt;
-    bar.className = "diag-bar" + (broken ? " warn" : "");
-    bar.style.display = "block";
   }
 }
 window.addEventListener("resize", layoutRows);

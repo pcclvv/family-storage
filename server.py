@@ -23,7 +23,7 @@ DB_PATH = os.path.join(DATA, "storage.db")
 
 CATEGORIES = ["被子", "床单", "被套", "枕头", "毛毯", "其他"]   # 初始种类，之后可在页面上自己加
 ROOM_PREFIX = ["A", "B", "C", "D", "E", "F", "G", "H"]
-PAGE_VER = "v1138"   # 页面版本号，前端拿它对比，不一致就强制重载（防手机缓存旧页面）
+PAGE_VER = "v1139"   # 页面版本号，前端拿它对比，不一致就强制重载（防手机缓存旧页面）
 _db_lock = threading.Lock()
 
 
