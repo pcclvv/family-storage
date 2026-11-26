@@ -18,7 +18,7 @@ from urllib.parse import urlparse, parse_qs
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 STATIC = os.path.join(BASE, "static")
-DATA = os.path.join(BASE, "data")
+DATA = os.environ.get("STORAGE_DIR") or os.path.join(BASE, "data")
 DB_PATH = os.path.join(DATA, "storage.db")
 
 CATEGORIES = ["被子", "床单", "被套", "枕头", "毛毯", "其他"]   # 初始种类，之后可在页面上自己加

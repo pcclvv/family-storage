@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """家庭储物管家 · 接口自测"""
-import glob
+import tempfile
 import json, os, subprocess, sys, time, shutil, urllib.request, urllib.error, urllib.parse
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # 项目根目录
@@ -29,7 +29,7 @@ def check(name, cond, extra=""):
         fail += 1; print("  ✗", name, extra)
 
 def start():
-    p = subprocess.Popen([sys.executable, "server.py"], env=dict(os.environ, PORT=str(PORT)),
+    p = subprocess.Popen([sys.executable, "server.py"], env=dict(os.environ, PORT=str(PORT), STORAGE_DIR=TESTDATA),
                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     for _ in range(50):
         try:
@@ -39,10 +39,9 @@ def start():
     out = p.stdout.read(2000).decode(errors="ignore")
     raise SystemExit("服务没起来：" + out)
 
-# 每轮从全新种子库开始，跑完即清理，可重复执行
-for _f in glob.glob(os.path.join(BASE, "data", "storage.db*")):
-    os.remove(_f)
+# 每轮从全新种子库开始（独立临时目录，绝不碰真实数据）
 
+TESTDATA = os.path.join(tempfile.mkdtemp(prefix="storagetest-"), "data")   # 独立测试数据目录
 print("== 启动 ==")
 p = start()
 try:
@@ -138,7 +137,7 @@ try:
     check("搜不到返回空", code == 200 and res["results"] == [])
 
     print("== 备份 ==")
-    check("写操作后生成 .bak", os.path.exists(os.path.join(BASE, "data", "storage.db.bak")))
+    check("写操作后生成 .bak", os.path.exists(os.path.join(TESTDATA, "storage.db.bak")))
     code, dump = call("GET", "/api/export")
     check("导出成功", code == 200 and "items" in dump["data"])
     before = dump["data"]["items"]
@@ -152,7 +151,7 @@ finally:
     p.terminate()
 
 print("\n== 数据库丢失自动还原 ==")
-db = os.path.join(BASE, "data", "storage.db")
+db = os.path.join(TESTDATA, "storage.db")
 bak = db + ".bak"
 if os.path.exists(db):
     os.remove(db)

@@ -45,25 +45,32 @@ for line in open(CK, encoding="utf-8").read().splitlines():
     if len(f) >= 7:
         cookie += (f[5] + "=" + f[6] + "; ")
 
-req = urllib.request.Request(HOST + "/api/export", headers={"Cookie": cookie.strip("; ")})
-try:
-    payload = json.load(urllib.request.urlopen(req, timeout=30))
-    data = payload.get("data") or {}
-except Exception:                      # 老版本没有 /api/export，用 /api/state 兜底
-    req = urllib.request.Request(HOST + "/api/state", headers={"Cookie": cookie.strip("; ")})
-    st = json.load(urllib.request.urlopen(req, timeout=30))
-    data = {"rooms": [], "cabinets": [], "types": st.get("types", []),
-            "cats": st.get("cats", [{"name": n} for n in st.get("categories", [])]),
-            "items": [], "logs": st.get("logs", [])}
-    for r in st.get("rooms", []):
-        data["rooms"].append({"id": r["id"], "name": r["name"], "sort": r.get("sort", 0)})
-        for cb in r.get("cabinets", []):
-            data["cabinets"].append({k: cb[k] for k in ("id", "room_id", "code", "name", "sort")})
-            for i in cb.get("items", []):
-                data["items"].append({k: i.get(k) for k in COLS["items"]})
-    payload = {"exported_at": st.get("time", "") or __import__("time").strftime("%Y-%m-%d %H:%M")}
+# 支持 --from 快照文件：从备份 json 重建数据库（数据被覆盖时用它恢复）
+if len(sys.argv) >= 3 and sys.argv[1] == "--from":
+    payload = json.load(open(sys.argv[2], encoding="utf-8"))
+    data = payload.get("data") or payload
+    stamp = payload.get("exported_at", "restore").replace(":", "").replace(" ", "-")
+else:
+    req = urllib.request.Request(HOST + "/api/export", headers={"Cookie": cookie.strip("; ")})
+    try:
+        payload = json.load(urllib.request.urlopen(req, timeout=30))
+        data = payload.get("data") or {}
+    except Exception as e:
+        # 老版本没有 /api/export，用 /api/state 兜底
+        req = urllib.request.Request(HOST + "/api/state", headers={"Cookie": cookie.strip("; ")})
+        st = json.load(urllib.request.urlopen(req, timeout=30))
+        data = {"rooms": [], "cabinets": [], "types": st.get("types", []),
+                "cats": st.get("cats", [{"name": n} for n in st.get("categories", [])]),
+                "items": [], "logs": st.get("logs", [])}
+        for r in st.get("rooms", []):
+            data["rooms"].append({"id": r["id"], "name": r["name"], "sort": r.get("sort", 0)})
+            for cb in r.get("cabinets", []):
+                data["cabinets"].append({k: cb[k] for k in ("id", "room_id", "code", "name", "sort")})
+                for i in cb.get("items", []):
+                    data["items"].append({k: i.get(k) for k in COLS["items"]})
+        payload = {"exported_at": st.get("time", "") or __import__("time").strftime("%Y-%m-%d %H:%M")}
+    stamp = payload.get("exported_at", "").replace(":", "").replace(" ", "-")
 
-stamp = payload.get("exported_at", "").replace(":", "").replace(" ", "-")
 with open(os.path.join(os.path.dirname(BASE), "quiltmap-backup", "live-%s.json" % stamp), "w",
           encoding="utf-8") as f:
     json.dump(payload, f, ensure_ascii=False, indent=1)

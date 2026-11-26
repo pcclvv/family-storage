@@ -121,11 +121,16 @@ header.top{
 .searchbar input:focus{border-color:#C9D9D0;box-shadow:0 0 0 4px rgba(94,139,122,.10)}
 .searchbar .ico{position:absolute;left:15px;top:50%;transform:translateY(-50%);opacity:.42}
 .searchbar .ico svg{width:17px;height:17px;stroke:var(--ink);fill:none;stroke-width:1.9;stroke-linecap:round}
-.searchbar.mini{margin:14px 0 0}
-.searchbar.mini input{padding:9px 40px 9px 36px;font-size:13px;border-radius:12px}
-.searchbar.mini .ico{left:12px}
-.searchbar.mini .ico svg{width:15px;height:15px}
-.searchbar.mini .search-clear{right:6px;width:26px;height:26px;font-size:12px}
+/* 顶栏小搜索框：紧跟在刷新按钮旁边 */
+.head-search{position:relative;margin:0;flex:0 1 200px;min-width:130px}
+.head-search input{padding:8px 26px 8px 30px;font-size:12.5px;border-radius:999px}
+.head-search .ico{left:10px}
+.head-search .ico svg{width:14px;height:14px}
+.head-search .search-clear{right:4px;width:22px;height:22px;font-size:11px}
+@media (max-width:600px){
+  .top-in{flex-wrap:wrap}
+  .head-search{order:9;flex:1 1 100%;min-width:0}
+}
 .search-clear{position:absolute;right:10px;top:50%;transform:translateY(-50%);
   width:28px;height:28px;border-radius:50%;display:none;place-items:center;
   background:var(--bg2);color:var(--muted);font-size:14px}
@@ -210,10 +215,10 @@ header.top{
 .cab-door{
   position:absolute;top:0;bottom:0;width:50%;z-index:2;
   background:linear-gradient(160deg,
-    rgba(255,255,255,var(--dg1,.30)) 0%,
-    rgba(250,244,232,var(--dg2,.12)) 42%,
-    rgba(238,226,202,var(--dg3,.14)) 72%,
-    rgba(255,255,255,var(--dg4,.24)) 100%);
+    rgba(255,255,255,var(--dg1,.42)) 0%,
+    rgba(250,244,232,var(--dg2,.26)) 42%,
+    rgba(238,226,202,var(--dg3,.30)) 72%,
+    rgba(255,255,255,var(--dg4,.38)) 100%);
   border:1px solid rgba(255,255,255,.78);
   box-shadow:inset 0 0 0 2px rgba(122,96,60,.14),inset 0 1px 0 rgba(255,255,255,.75),0 1px 4px rgba(110,86,54,.16);
   backdrop-filter:saturate(112%);
@@ -221,22 +226,18 @@ header.top{
   transition:transform .42s cubic-bezier(.2,.85,.2,1),box-shadow .3s,background .3s;
   overflow:hidden;
 }
-.cab-door::before{ /* 斜向玻璃反光带 */
+.cab-door::before{ /* 斜向玻璃反光带：白色高光扫过，玻璃感的关键 */
   content:"";position:absolute;inset:0;
   background:linear-gradient(115deg,
-    rgba(255,255,255,0) 10%,
-    rgba(255,255,255,.50) 24%,
-    rgba(255,255,255,.05) 38%,
-    rgba(255,255,255,0) 58%,
-    rgba(255,255,255,.30) 80%,
+    rgba(255,255,255,0) 8%,
+    rgba(255,255,255,.55) 22%,
+    rgba(255,255,255,.10) 38%,
+    rgba(255,255,255,0) 55%,
+    rgba(255,255,255,.34) 78%,
     rgba(255,255,255,0) 95%);
 }
-body[data-door="clear"]{--dg1:.10;--dg2:.03;--dg3:.05;--dg4:.10;--dgBlur:.3px}
+body[data-door="clear"]{--dg1:.16;--dg2:.07;--dg3:.10;--dg4:.14;--dgBlur:.3px}
 body[data-door="solid"]{--dg1:.97;--dg2:.95;--dg3:.94;--dg4:.96;--dgBlur:6px}
-.cab-door::before{ /* 玻璃斜向高光 */
-  content:"";position:absolute;inset:0;
-  background:linear-gradient(115deg,rgba(255,255,255,.30) 0%,rgba(255,255,255,.05) 36%,rgba(255,255,255,0) 52%,rgba(255,255,255,.13) 100%);
-}
 .cab-door::after{ /* 门框 */
   content:"";position:absolute;inset:4px;border:1px solid rgba(255,255,255,.4);border-radius:4px;
 }
@@ -278,9 +279,8 @@ button,.tab,.top-btn,.cab,.room-add,.icon-btn{touch-action:manipulation;-webkit-
 .cab.half .ins-line em{display:none}
 .cab.half .ins-more{font-size:8px;text-align:center;padding-right:0}
 .cab.half .ins-empty{font-size:8.5px}
-.cab.half .cab-foot{flex:1 0 auto;display:flex;align-items:center;justify-content:center;padding:7px 6px 8px;font-size:9.5px;text-align:center}
+/* 底部与大柜完全一致（同样的字号、内边距、左对齐），高度自然一样 */
 .cab.half:hover .cab-door.single{transform:rotateY(-12deg)}
-.cabs.dense .cab.half .cab-foot{font-size:9px;padding:6px 5px 7px}
 
 /* ---------- 搜索结果 ---------- */
 .results{margin-top:18px;display:none}
@@ -356,6 +356,9 @@ button,.tab,.top-btn,.cab,.room-add,.icon-btn{touch-action:manipulation;-webkit-
 .qty button{width:24px;height:24px;border-radius:50%;font-size:14px;color:#7A6E5C;display:grid;place-items:center}
 .qty button:active{background:var(--bg2)}
 .qty span{min-width:18px;text-align:center;font-size:12.5px;font-weight:600}
+.takeout{white-space:nowrap;font-size:12px;font-weight:600;color:#B0654A;background:#FDF1EA;
+  border:1px solid #F2DCCE;border-radius:999px;padding:6px 13px;flex:0 0 auto}
+.takeout:active{background:#F8E3D6}
 .del{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;color:#C08A73;flex:0 0 auto}
 .del:active{background:#F8E7DF}
 .mini-edit{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;color:#8A9C90;flex:0 0 auto}
@@ -436,6 +439,11 @@ button,.tab,.top-btn,.cab,.room-add,.icon-btn{touch-action:manipulation;-webkit-
       </div>
     </div>
     <div class="top-spacer"></div>
+    <div class="searchbar head-search">
+      <span class="ico"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg></span>
+      <input id="q" placeholder="找东西，如「冬被」" autocomplete="off">
+      <button class="search-clear" id="qClear">✕</button>
+    </div>
     <button class="top-btn" id="refreshBtn" title="刷新数据">⟳ <span class="t">刷新</span></button>
     <button class="top-btn" id="libBtn">🧺 <span class="t">物品库</span></button>
     <button class="who-chip" id="whoBtn">
@@ -446,12 +454,6 @@ button,.tab,.top-btn,.cab,.room-add,.icon-btn{touch-action:manipulation;-webkit-
 </header>
 
 <div class="wrap">
-  <div class="searchbar mini">
-    <span class="ico"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg></span>
-    <input id="q" placeholder="找东西，如「冬被」" autocomplete="off">
-    <button class="search-clear" id="qClear">✕</button>
-  </div>
-
   <div class="overview">
     <div class="stat link" id="stTotalCard" onclick="openAll()" role="button" tabindex="0"><span>物品总数</span><b id="stTotal">0<i>件</i></b><em class="tap">点开看明细 ›</em></div>
     <div class="stat link" id="stTypesCard" onclick="openLib()" role="button" tabindex="0"><span>物品品类</span><b id="stTypes">0<i>种</i></b><em class="tap">点开物品库 ›</em></div>
@@ -841,20 +843,15 @@ function refreshSheet(){
   el("shSub").textContent = cab.items.length ? `里面 ${cab.items.length} 种 · 共 ${cab.count} 件` : "还是空的，先放点东西进去";
   el("szFull").className = "top-btn" + (cab.size === "half" ? "" : " solid");
   el("szHalf").className = "top-btn" + (cab.size === "half" ? " solid" : "");
-  el("shItems").innerHTML = cab.items.length ? cab.items.map(i=>`
+  el("shItems").innerHTML = cab.items.length ? cab.items.slice().sort((a,b)=>a.name.localeCompare(b.name,"zh-Hans-CN")).map(i=>`
     <div class="item">
       <span class="cat" style="background:${catColor(i.category)}"></span>
       <div class="body" onclick="openItemEdit(${i.id})">
         <b>${esc(i.name)}</b>
         <small>${esc(i.category)}${i.note?" · "+esc(i.note):""}${i.who?" · "+esc(i.who)+"放的":""}</small>
       </div>
-      <div class="qty">
-        <button onclick="bumpQty(${i.id},-1)">−</button>
-        <span>${i.qty}</span>
-        <button onclick="bumpQty(${i.id},1)">＋</button>
-      </div>
       <button class="mini-edit" onclick="openItemEdit(${i.id})" title="改名字/数量/备注">✎</button>
-      <button class="del" onclick="removeItem(${i.id})" title="取出">✕</button>
+      <button class="takeout" onclick="removeItem(${i.id})">取出</button>
     </div>`).join("")
     : `<div class="empty-state"><span class="big">🧺</span>这个柜子还空着<br>在下面从物品库选一件放进来</div>`;
   renderTypeChips();
@@ -865,7 +862,7 @@ function refreshSheet(){
 }
 
 function renderTypeChips(){
-  const types = state.types || [];
+  const types = (state.types || []).slice().sort((a,b)=>a.name.localeCompare(b.name,"zh-Hans-CN"));
   if(!types.length){
     el("typeChips").innerHTML = `<span class="chip" style="cursor:default">物品库还空着，点右上角「物品库」加一种</span>`;
     return;
@@ -1066,7 +1063,7 @@ function closeLib(){
   el("mask").classList.remove("on");
 }
 function renderLib(){
-  const types = (state && state.types) || [];
+  const types = ((state && state.types) || []).slice().sort((a,b)=>a.name.localeCompare(b.name,"zh-Hans-CN"));
   el("libSub").textContent = types.length ? `共 ${types.length} 种基础物品，柜子里都从这儿选` : "还没有物品，先在下面加一个";
   el("libList").innerHTML = types.length ? types.map(t=>`
     <div class="lib-row">
@@ -1198,7 +1195,8 @@ function renderAll(){
   state.rooms.forEach(r=>{
     r.cabinets.forEach(c=>{
       const items = (c.items||[]).filter(i=> !q ||
-        [i.name, i.category, i.note, c.code, c.name, r.name].join(" ").toLowerCase().includes(q));
+        [i.name, i.category, i.note, c.code, c.name, r.name].join(" ").toLowerCase().includes(q))
+        .sort((a,b)=>a.name.localeCompare(b.name,"zh-Hans-CN"));
       if(!items.length) return;
       const sum = items.reduce((s,i)=>s+i.qty, 0);
       total += sum; kinds += items.length;
@@ -1211,13 +1209,8 @@ function renderAll(){
           <span class="catdot" style="background:${catColor(i.category)}"></span>
           <div class="body" onclick="openItemEdit(${i.id})"><b>${esc(i.name)}</b>
             <small>${esc(i.category)}${i.note?" · "+esc(i.note):""}</small></div>
-          <div class="qty">
-            <button onclick="bumpQty(${i.id},-1)">−</button>
-            <span>${i.qty}</span>
-            <button onclick="bumpQty(${i.id},1)">＋</button>
-          </div>
           <button class="mini-edit" onclick="openItemEdit(${i.id})" title="改名字/数量/备注">✎</button>
-          <button class="del" onclick="removeItem(${i.id})" title="取出">✕</button>
+          <button class="takeout" onclick="removeItem(${i.id})">取出</button>
         </div>`).join("")}
       </div>`);
     });
