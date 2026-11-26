@@ -208,15 +208,19 @@ header.top{
   background:repeating-linear-gradient(90deg,rgba(150,120,76,.20) 0 1px,transparent 1px 7px);
 }
 .cab-inside{
-  position:absolute;top:6px;right:6px;bottom:6px;left:6px;border-radius:6px;background:#75634F;
-  box-shadow:inset 0 4px 12px rgba(0,0,0,.30);
+  position:absolute;top:6px;right:6px;bottom:6px;left:6px;border-radius:6px;
+  background:linear-gradient(180deg,#5B4B3A,#6B5844 45%,#7A6650);
+  box-shadow:inset 0 9px 16px rgba(0,0,0,.42),inset 0 -6px 12px rgba(0,0,0,.26),
+             inset 0 0 0 1px rgba(0,0,0,.16);
   display:flex;flex-direction:column;justify-content:flex-end;gap:3px;padding:5px;
   overflow:hidden;z-index:1;
 }
+/* 里面的东西：稍微暗一点、带点柔和阴影，看起来是放在柜子里（而不是浮在玻璃上） */
+.cab-inside .ins-line,.cab-inside .ins-empty{filter:saturate(.96) brightness(.97)}
 .ins-line{
   height:17px;border-radius:4px;display:flex;align-items:center;gap:4px;padding:0 5px;
   font-size:9.5px;color:#332B22;white-space:nowrap;overflow:hidden;
-  box-shadow:0 1px 1px rgba(0,0,0,.12);
+  box-shadow:0 1px 1px rgba(0,0,0,.14),0 3px 7px rgba(0,0,0,.22);
 }
 .ins-line b{font-weight:700;overflow:hidden;text-overflow:ellipsis}
 .ins-line em{font-style:normal;opacity:.62;font-size:8.5px;margin-left:auto;padding-left:3px}
@@ -277,6 +281,8 @@ button,.tab,.top-btn,.cab,.room-add,.icon-btn{touch-action:manipulation;-webkit-
 .cab-door.left .handle{right:6px}
 .cab-door.right .handle{left:6px}
 .cab-door.single .handle{right:7px;height:27px;width:5px}
+/* 手机端专用：玻璃门盖在文字上层（桌面端用真实 3D 柜门，不需要这层） */
+.cab-glass{display:none}
 
 .cab-foot{padding:9px 11px 11px;font-size:11.5px;color:#8A7E6B;line-height:1.35;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -294,52 +300,103 @@ button,.tab,.top-btn,.cab,.room-add,.icon-btn{touch-action:manipulation;-webkit-
 /* 底部与大柜完全一致（同样的字号、内边距、左对齐），高度自然一样 */
 .cab.half:hover .cab-door.single{transform:rotateY(-12deg)}
 
-/* ---------- 手机端柜子：平面渲染，不依赖绝对定位 ----------
-   部分手机浏览器（微信/X5 内核等）对 <button> 内部的绝对定位子元素不绘制，
-   导致木纹底、玻璃门整体消失。手机端全部改用普通流 + 多重背景图层实现：
-   木纹、玻璃反光、门缝、门把手都是 background 图层，普通流里的物品条直接排在柜体上 */
+/* ---------- 手机端柜子：三层立体渲染（不依赖绝对定位） ----------
+   部分手机浏览器（微信/X5 等）对 <button> 内部的绝对定位子元素不绘制，会整层消失，
+   所以手机端不用 position:absolute，改用「普通流 + 负外边距叠层」做出真正的层次：
+     第 1 层 .cab-body   木纹柜体外框（最底）
+     第 2 层 .cab-inside 柜内空腔 + 内阴影 + 物品文字（中间层，字在柜子里）
+     第 3 层 .cab-glass  玻璃门盖在最上面（斜向反光 + 门缝 + 金色把手）
+   文字被玻璃罩住 → 隔着玻璃看柜子，立体感就出来了 */
 @media (max-width:600px){
   .cab-body{
-    height:118px;margin:9px 11px 0;border-radius:9px;overflow:hidden;
-    box-sizing:border-box;border:1px solid rgba(255,255,255,.55);
-    box-shadow:0 8px 14px -9px rgba(84,64,40,.45);
-    display:flex;flex-direction:column;justify-content:flex-end;gap:3px;
-    padding:12px 8px 8px;
+    display:block;height:118px;margin:9px 11px 0;padding:0;box-sizing:border-box;
+    border-radius:9px;overflow:hidden;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.5),0 8px 14px -9px rgba(84,64,40,.45);
     transition:transform .25s ease,opacity .25s ease;
-    /* 图层从上到下：门把手 / 玻璃反光带 / 玻璃白罩 / 柜体木纹 */
+    /* 第 1 层：木纹柜体外框（顶板高光 + 木纹 + 木色渐变） */
     background-image:
-      linear-gradient(180deg,#F1DCA8,#CBA65F 46%,#A98842),
-      linear-gradient(115deg,rgba(255,255,255,0) 8%,rgba(255,255,255,.5) 22%,rgba(255,255,255,.08) 38%,rgba(255,255,255,0) 55%,rgba(255,255,255,.3) 78%,rgba(255,255,255,0) 95%),
-      linear-gradient(rgba(255,255,255,.16),rgba(255,255,255,.16)),
+      linear-gradient(180deg,rgba(255,255,255,.5),rgba(255,255,255,0)),
+      repeating-linear-gradient(90deg,rgba(150,120,76,.16) 0 1px,transparent 1px 7px),
       linear-gradient(160deg,#8A7460,#74604B 55%,#63503C);
-    background-size:5px 26px,auto,auto,auto;
-    background-position:right 7px center,0 0,0 0,0 0;
+    background-size:auto 6px,auto,auto;
+    background-position:0 0,0 0,0 0;
     background-repeat:no-repeat;
   }
-  /* 双门柜：门缝 + 把手在正中间；半格柜保持右边把手 */
-  .cab-body.twin{
-    background-image:
-      linear-gradient(90deg,rgba(255,255,255,0) 49%,rgba(255,255,255,.4) 49%,rgba(255,255,255,.4) 51%,rgba(255,255,255,0) 51%),
-      linear-gradient(180deg,#F1DCA8,#CBA65F 46%,#A98842),
-      linear-gradient(115deg,rgba(255,255,255,0) 8%,rgba(255,255,255,.5) 22%,rgba(255,255,255,.08) 38%,rgba(255,255,255,0) 55%,rgba(255,255,255,.3) 78%,rgba(255,255,255,0) 95%),
-      linear-gradient(rgba(255,255,255,.16),rgba(255,255,255,.16)),
-      linear-gradient(160deg,#8A7460,#74604B 55%,#63503C);
-    background-size:2px 100%,5px 26px,auto,auto,auto;
-    background-position:center center,center center,0 0,0 0,0 0;
-    background-repeat:no-repeat;
-  }
-  /* 柜内结构退化为普通流，物品条直接排在柜体上 */
-  .cab-frame,.cab-frame .cab-inside{
-    position:static;width:auto;height:auto;margin:0;border-radius:0;
-    background:none;box-shadow:none;overflow:visible;
-    display:flex;flex-direction:column;justify-content:flex-end;gap:3px;padding:0;
+  /* 第 2 层：柜内空腔，物品文字排在腔体最下方（有纵深的内阴影） */
+  .cab-frame{
+    position:static;display:block;height:100%;padding:9px 7px 7px;
+    box-sizing:border-box;border-radius:0;background:none;box-shadow:none;overflow:visible;
   }
   .cab-frame::before,.cab-frame::after{display:none}
+  .cab-inside{
+    position:static;display:flex;flex-direction:column;justify-content:flex-end;gap:3px;
+    height:100%;box-sizing:border-box;margin:0;padding:5px;border-radius:5px;overflow:hidden;
+    background:linear-gradient(180deg,#63523F,#75614C 45%,#83705A);
+    box-shadow:inset 0 9px 16px rgba(0,0,0,.40),inset 0 -6px 12px rgba(0,0,0,.26),
+               inset 0 0 0 1px rgba(0,0,0,.18);
+  }
+  /* 第 3 层：玻璃门（盖在文字上）。负外边距把它整体叠回柜体区域上，
+     纯块级布局 + 负 margin，任何内核都支持 */
+  .cab-glass{
+    display:block;height:118px;margin:-118px 0 0;box-sizing:border-box;
+    border-radius:9px;pointer-events:none;
+    background-image:
+      linear-gradient(180deg,#F1DCA8,#CBA65F 46%,#A98842),
+      linear-gradient(115deg,rgba(255,255,255,0) 8%,rgba(255,255,255,.40) 22%,rgba(255,255,255,.07) 38%,rgba(255,255,255,0) 55%,rgba(255,255,255,.24) 78%,rgba(255,255,255,0) 95%),
+      linear-gradient(160deg,rgba(255,255,255,.20) 0%,rgba(250,244,232,.09) 42%,rgba(238,226,202,.12) 72%,rgba(255,255,255,.18) 100%);
+    background-size:5px 26px,auto,auto;
+    background-position:right 7px center,0 0,0 0;
+    background-repeat:no-repeat;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.5),inset 0 0 0 4px rgba(255,255,255,.10),
+               inset 0 -14px 22px -14px rgba(70,54,34,.4);
+  }
+  /* 双门柜：中间多一道门缝（叠在玻璃层最上面，把手仍在右边） */
+  .cab-body.twin .cab-glass{
+    background-image:
+      linear-gradient(90deg,rgba(255,255,255,0) 49%,rgba(255,255,255,.42) 49%,rgba(255,255,255,.42) 51%,rgba(255,255,255,0) 51%),
+      linear-gradient(180deg,#F1DCA8,#CBA65F 46%,#A98842),
+      linear-gradient(115deg,rgba(255,255,255,0) 8%,rgba(255,255,255,.40) 22%,rgba(255,255,255,.07) 38%,rgba(255,255,255,0) 55%,rgba(255,255,255,.24) 78%,rgba(255,255,255,0) 95%),
+      linear-gradient(160deg,rgba(255,255,255,.20) 0%,rgba(250,244,232,.09) 42%,rgba(238,226,202,.12) 72%,rgba(255,255,255,.18) 100%);
+    background-size:2px 100%,5px 26px,auto,auto;
+    background-position:center center,center center,0 0,0 0;
+    background-repeat:no-repeat;
+  }
+  /* 柜门玻璃设置（清透 / 半透明 / 磨砂）在手机上同样生效 */
+  body[data-door="clear"] .cab-glass{
+    background-image:
+      linear-gradient(180deg,#F1DCA8,#CBA65F 46%,#A98842),
+      linear-gradient(115deg,rgba(255,255,255,0) 8%,rgba(255,255,255,.42) 22%,rgba(255,255,255,.06) 38%,rgba(255,255,255,0) 55%,rgba(255,255,255,.24) 78%,rgba(255,255,255,0) 95%),
+      linear-gradient(160deg,rgba(255,255,255,.08) 0%,rgba(250,244,232,.04) 42%,rgba(238,226,202,.05) 72%,rgba(255,255,255,.08) 100%);
+  }
+  body[data-door="clear"] .cab-body.twin .cab-glass{
+    background-image:
+      linear-gradient(90deg,rgba(255,255,255,0) 49%,rgba(255,255,255,.34) 49%,rgba(255,255,255,.34) 51%,rgba(255,255,255,0) 51%),
+      linear-gradient(180deg,#F1DCA8,#CBA65F 46%,#A98842),
+      linear-gradient(115deg,rgba(255,255,255,0) 8%,rgba(255,255,255,.42) 22%,rgba(255,255,255,.06) 38%,rgba(255,255,255,0) 55%,rgba(255,255,255,.24) 78%,rgba(255,255,255,0) 95%),
+      linear-gradient(160deg,rgba(255,255,255,.08) 0%,rgba(250,244,232,.04) 42%,rgba(238,226,202,.05) 72%,rgba(255,255,255,.08) 100%);
+  }
+  body[data-door="solid"] .cab-glass{
+    background-image:
+      linear-gradient(180deg,#F1DCA8,#CBA65F 46%,#A98842),
+      linear-gradient(160deg,rgba(253,250,243,.96) 0%,rgba(250,244,232,.94) 42%,rgba(238,226,202,.93) 72%,rgba(253,250,243,.95) 100%);
+    background-size:5px 26px,auto;
+    background-position:right 7px center,0 0;
+  }
+  body[data-door="solid"] .cab-body.twin .cab-glass{
+    background-image:
+      linear-gradient(90deg,rgba(200,186,160,.55) 49%,rgba(120,100,72,.5) 49%,rgba(120,100,72,.5) 51%,rgba(200,186,160,.55) 51%),
+      linear-gradient(180deg,#F1DCA8,#CBA65F 46%,#A98842),
+      linear-gradient(160deg,rgba(253,250,243,.96) 0%,rgba(250,244,232,.94) 42%,rgba(238,226,202,.93) 72%,rgba(253,250,243,.95) 100%);
+    background-size:2px 100%,5px 26px,auto;
+    background-position:center center,center center,0 0;
+  }
   .cab-door,.handle{display:none}
-  .cab.half .cab-frame,.cab.half .cab-frame .cab-inside{gap:2px}
-  .cab.half .cab-inside{padding:0}
-  /* 点柜子时的开门反馈：整柜轻缩一下（不用 3D） */
-  .cab.open-doors .cab-body{transform:scale(.94);opacity:.85}
+  .cab.half .cab-inside{padding:4px;gap:2px}
+  .cab.half .cab-body.twin .cab-glass{background-size:2px 100%,5px 26px,auto,auto}
+  /* 点柜子时的开门反馈：整柜轻缩 + 玻璃淡出（像门被拉开） */
+  .cab.open-doors .cab-body{transform:scale(.96);opacity:.9}
+  .cab.open-doors .cab-glass{opacity:0}
+  .cab-glass{transition:opacity .22s ease}
 }
 
 /* 简洁模式（内核不认宽度设置时的兑底）：柜子取消多列，全宽堆叠，任何内核都不会乱 */
@@ -532,7 +589,7 @@ body.fb .cabs{display:block}
     <div class="logs" id="logs"></div>
   </div>
 
-  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1139</span></div>
+  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1140</span></div>
 </div>
 
 <div class="mask" id="mask"></div>
@@ -691,7 +748,7 @@ body.fb .cabs{display:block}
 <div class="toast" id="toast"></div>
 
 <script>
-const VER = "v1139";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
+const VER = "v1140";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
 const BASE_COLOR = {"被子":"#9DC0AD","床单":"#E3C878","被套":"#DDA077","枕头":"#A9BEDB","毛毯":"#CFA6C0","其他":"#C3B9AA"};
 const PALETTE = ["#8FB0A8","#D9B36C","#B3A0C9","#C7A98B","#94AEBB","#D6A0A0","#A8B98E"];
 /* 种类来自后端，可以自己加，颜色按顺序分配 */
@@ -939,6 +996,7 @@ function cabHTML(room, cab, U, K, GP){
       </div>
       <div class="cab-body ${isHalf?"":"twin"}">
         <div class="cab-frame"><div class="cab-inside">${inner}</div></div>
+        <div class="cab-glass"></div>
         ${doors}
       </div>
       <div class="cab-foot">${foot}</div>
