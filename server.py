@@ -25,7 +25,7 @@ CATEGORIES = ["被子", "床单", "被套", "枕头", "毛毯", "其他"]   # �
 ROOM_PREFIX = ["A", "B", "C", "D", "E", "F", "G", "H"]
 FLOORS = ["F2", "F3", "F4"]     # 楼层：每层房间与柜子结构相同，柜内物品各自独立
 DEFAULT_FLOOR = "F3"            # 首页默认进 F3
-PAGE_VER = "v1144"   # 页面版本号，前端拿它对比，不一致就强制重载（防手机缓存旧页面）
+PAGE_VER = "v1145"   # 页面版本号，前端拿它对比，不一致就强制重载（防手机缓存旧页面）
 _db_lock = threading.Lock()
 
 
@@ -96,7 +96,8 @@ def init_db():
           name TEXT NOT NULL,
           category TEXT NOT NULL DEFAULT '其他',
           sort INTEGER NOT NULL DEFAULT 0,
-          floor TEXT NOT NULL DEFAULT 'F3'
+          floor TEXT NOT NULL DEFAULT 'F3',
+          inuse INTEGER NOT NULL DEFAULT 0
         );
         CREATE TABLE IF NOT EXISTS cats (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -182,6 +183,8 @@ def migrate(c):
     tp_cols = [r["name"] for r in c.execute("PRAGMA table_info(types)")]
     if "floor" not in tp_cols:
         c.execute("ALTER TABLE types ADD COLUMN floor TEXT NOT NULL DEFAULT 'F3'")
+    if "inuse" not in tp_cols:      # 使用中：没放进柜子，但在家里用着（如冬天床上盖着的被子）
+        c.execute("ALTER TABLE types ADD COLUMN inuse INTEGER NOT NULL DEFAULT 0")
     ensure_floors(c)
     unknown = c.execute("SELECT * FROM items WHERE type_id=0").fetchall()
     for it in unknown:
@@ -379,6 +382,7 @@ def get_state():
                     "label": "%s %s %s" % (fl, room["name"], cab["code"])}
     for t in types:
         t["floor"] = t.get("floor") or DEFAULT_FLOOR
+        t["inuse"] = int(t.get("inuse") or 0)
         t["places"] = places.get(t["id"], {})
         t["place"] = t["places"].get(DEFAULT_FLOOR) or next(iter(t["places"].values()), None)
     return {"rooms": rooms, "logs": logs, "types": types, "categories": cats, "cats": cats_rows,
@@ -388,7 +392,7 @@ def get_state():
 TABLE_COLS = {
     "rooms": {"id", "name", "sort", "floor"},
     "cabinets": {"id", "room_id", "code", "name", "size", "sort", "floor"},
-    "types": {"id", "name", "category", "sort", "floor"},
+    "types": {"id", "name", "category", "sort", "floor", "inuse"},
     "cats": {"id", "name", "sort"},
     "items": {"id", "cabinet_id", "type_id", "name", "category", "qty", "note", "who",
               "created_at", "updated_at"},
@@ -567,7 +571,13 @@ class Handler(BaseHTTPRequestHandler):
         who = self._who(b)
         new_name = (b.get("name") or "").strip()[:40] if "name" in b else None
         cat_in = (b.get("category") or "").strip()[:10] if "category" in b else None
-        if not new_name and cat_in is None:
+        inuse_set = None
+        if "inuse" in b:
+            try:
+                inuse_set = max(0, min(999, int(b.get("inuse") or 0)))
+            except Exception:
+                inuse_set = None
+        if not new_name and cat_in is None and inuse_set is None:
             return self._send(400, {"error": "没有要修改的内容"})
         with _db_lock:
             c = conn()
@@ -589,6 +599,10 @@ class Handler(BaseHTTPRequestHandler):
                 cat = ensure_cat(c, cat_in)
                 c.execute("UPDATE types SET category=? WHERE id=?", (cat, tid))
                 c.execute("UPDATE items SET category=? WHERE type_id=?", (cat, tid))
+            if inuse_set is not None:
+                c.execute("UPDATE types SET inuse=? WHERE id=?", (inuse_set, tid))
+                log(c, who, "物品库", "%s 的「%s」使用中改成 %d 件"
+                    % (fl, new_name or row["name"], inuse_set))
             log(c, who, "物品库", "修改 %s 的物品「%s」" % (fl, new_name or row["name"]))
             c.commit()
             c.close()

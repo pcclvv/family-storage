@@ -13,7 +13,8 @@ CREATE TABLE cabinets (id INTEGER PRIMARY KEY AUTOINCREMENT, room_id INTEGER NOT
   name TEXT NOT NULL DEFAULT '', size TEXT NOT NULL DEFAULT 'full', sort INTEGER NOT NULL DEFAULT 0,
   floor TEXT NOT NULL DEFAULT 'F3');
 CREATE TABLE types (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, category TEXT NOT NULL DEFAULT '其他',
-  sort INTEGER NOT NULL DEFAULT 0, floor TEXT NOT NULL DEFAULT 'F3');
+  sort INTEGER NOT NULL DEFAULT 0, floor TEXT NOT NULL DEFAULT 'F3',
+  inuse INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE cats (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, sort INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE items (id INTEGER PRIMARY KEY AUTOINCREMENT, cabinet_id INTEGER NOT NULL, type_id INTEGER NOT NULL DEFAULT 0,
   name TEXT NOT NULL DEFAULT '', category TEXT NOT NULL DEFAULT '其他', qty INTEGER NOT NULL DEFAULT 1,
@@ -28,7 +29,7 @@ ORDER = ("rooms", "cabinets", "types", "cats", "items", "logs", "config")
 COLS = {
     "rooms": ["id", "name", "sort", "floor"],
     "cabinets": ["id", "room_id", "code", "name", "size", "sort", "floor"],
-    "types": ["id", "name", "category", "sort", "floor"],
+    "types": ["id", "name", "category", "sort", "floor", "inuse"],
     "cats": ["id", "name", "sort"],
     "items": ["id", "cabinet_id", "type_id", "name", "category", "qty", "note", "who",
               "created_at", "updated_at"],

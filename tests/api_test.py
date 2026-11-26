@@ -97,6 +97,12 @@ try:
     code, s8 = call("PATCH", "/api/types/%d" % nid, {"name": "自测被2", "category": "被套", "who": "自测"})
     t = next(x for x in s8["types"] if x["id"] == nid)
     check("改名+换分类", t["name"] == "自测被2" and t["category"] == "被套", t)
+    code, s8u = call("PATCH", "/api/types/%d" % nid, {"inuse": 2, "who": "自测"})
+    t = next(x for x in s8u["types"] if x["id"] == nid)
+    check("记录在用数量", code == 200 and t.get("inuse") == 2, t)
+    code, _ = call("PATCH", "/api/types/%d" % nid, {"inuse": -5})
+    t = next(x for x in call("GET", "/api/state")[1]["types"] if x["id"] == nid)
+    check("在用数量不会小于 0", t["inuse"] == 0, t)
     code, _ = call("PATCH", "/api/types/%d" % nid, {"name": "", "category": "被子"})
     check("空名字被拒或不改坏", code in (400, 200))
 

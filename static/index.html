@@ -633,7 +633,7 @@ body.fb .cabs{display:block}
     <div class="logs" id="logs"></div>
   </div>
 
-  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1144</span></div>
+  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1145</span></div>
 </div>
 
 <div class="mask" id="mask"></div>
@@ -782,6 +782,14 @@ body.fb .cabs{display:block}
       <input class="field small" id="edQty" type="number" min="1" max="999" inputmode="numeric">
       <input class="field" id="edNote" placeholder="备注（可留空）" maxlength="40">
     </div>
+    <div class="form-row" id="edUseRow" style="display:none;margin:10px 0 0">
+      <button class="top-btn" type="button" onclick="stepEdUse(-1)">−</button>
+      <div style="flex:1;text-align:center;font-size:12.5px;color:#6E6250;line-height:1.35">
+        <b id="edUseNum" style="font-size:17px">0</b> 件在用<br>
+        <span style="font-size:11px;color:#A2937B">没放进柜子，但家里正在用</span>
+      </div>
+      <button class="top-btn" type="button" onclick="stepEdUse(1)">＋</button>
+    </div>
     <div class="row">
       <button class="ghost" id="edCancel">取消</button>
       <button class="ok" id="edSave">保存</button>
@@ -792,7 +800,7 @@ body.fb .cabs{display:block}
 <div class="toast" id="toast"></div>
 
 <script>
-const VER = "v1144";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
+const VER = "v1145";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
 const BASE_COLOR = {"被子":"#9DC0AD","床单":"#E3C878","被套":"#DDA077","枕头":"#A9BEDB","毛毯":"#CFA6C0","其他":"#C3B9AA"};
 const PALETTE = ["#8FB0A8","#D9B36C","#B3A0C9","#C7A98B","#94AEBB","#D6A0A0","#A8B98E"];
 /* 种类来自后端，可以自己加，颜色按顺序分配 */
@@ -877,15 +885,22 @@ function placeOf(t){
   if(t.places) return t.places[curFloor] || null;
   return t.place || null;
 }
+/* 每层柜内累计 / 使用中累计（使用中 = 没进柜子但在用的，如冬天床上盖的被子） */
+function floorCab(f){
+  let n = 0;
+  ((state && state.rooms) || []).forEach(r=>{ if((r.floor || "F3") === f) n += (r.count || 0); });
+  return n;
+}
+function floorUse(f){
+  return ((state && state.types) || [])
+    .filter(t=>(t.floor || "F3") === f).reduce((s,t)=>s + (t.inuse || 0), 0);
+}
 function renderFloorBar(){
   const bar = el("floorBar");
   if(!bar) return;
-  /* 每层的累计件数，跟着数据实时变 */
+  /* 每层的累计件数（柜内 + 使用中），跟着数据实时变 */
   const cnt = {};
-  ((state && state.rooms) || []).forEach(r=>{
-    const f = r.floor || "F3";
-    cnt[f] = (cnt[f] || 0) + (r.count || 0);
-  });
+  floors().forEach(f=>{ cnt[f] = floorCab(f) + floorUse(f); });
   bar.innerHTML = '<span class="lab">楼层</span>' + floors().map(f=>
     `<button class="floor-pill ${f===curFloor?"on":""}" onclick="setFloor('${f}')">${f}<em>${cnt[f]||0}件</em></button>`
   ).join("") + '<span class="fnote">每层柜子布置一样，东西各放各的</span>';
@@ -903,12 +918,17 @@ function render(){
   applyDoor();
   el("whoName").textContent = who || "家人";
   const rooms = roomsNow();
-  let total = 0;
-  rooms.forEach(r=>{ total += r.count; });
+  let cabTotal = 0;
+  rooms.forEach(r=>{ cabTotal += r.count; });
+  const useTotal = floorUse(curFloor);
   if(el("stTotalLab")) el("stTotalLab").textContent = curFloor + " 物品总数";
   if(el("stTypesLab")) el("stTypesLab").textContent = curFloor + " 物品品类";
-  el("stTotal").innerHTML = total + "<i>件</i>";
-  const kindsInFloor = (state.types || []).filter(t=>placeOf(t)).length;
+  el("stTotal").innerHTML = (cabTotal + useTotal) + "<i>件</i>";
+  const tap = el("stTotalCard") && el("stTotalCard").querySelector(".tap");
+  if(tap) tap.textContent = useTotal
+    ? `柜内 ${cabTotal} · 在用 ${useTotal} 件 ›`
+    : "点开看明细 ›";
+  const kindsInFloor = typesNow().filter(t=>placeOf(t) || (t.inuse||0) > 0).length;
   el("stTypes").innerHTML = kindsInFloor + "<i>种</i>";
   renderFloorBar();
 
@@ -1215,7 +1235,7 @@ function renderTypeChips(){
     if(pl){
       return `<button class="chip used other" onclick="usedHint(${t.id})">${esc(t.name)} · 在${esc(pl.code)}</button>`;
     }
-    return `<button class="chip" onclick="putItem(${t.id})">${esc(t.name)}</button>`;
+    return `<button class="chip" onclick="putItem(${t.id})">${esc(t.name)}${t.inuse?`<i style="font-style:normal;font-size:10.5px;opacity:.6;margin-left:3px">在用${t.inuse}</i>`:""}</button>`;
   }).join("");
 }
 
@@ -1238,8 +1258,15 @@ async function putItem(typeId){
   putting = true;
   try{
     state = await api("POST","/api/items",{cabinetId: currentCab, typeId, qty: 1, note: "", who});
+    /* 这件原来有「使用中」的，收进柜子就等于少一件在用 */
+    let left = t ? (t.inuse || 0) : 0;
+    if(left > 0){
+      state = await api("PATCH","/api/types/"+typeId,{inuse: left - 1, who});
+      left -= 1;
+    }
     render();
-    toast("已放进 " + ((findCab(currentCab) || {}).cab ? findCab(currentCab).cab.code : "") + " ✓（1 件）");
+    const code = (findCab(currentCab) || {}).cab ? findCab(currentCab).cab.code : "";
+    toast("已放进 " + code + " ✓（1 件）" + (left > 0 ? "，在用还剩 " + left + " 件" : (t && t.inuse ? "，这件不在用了" : "")));
   }catch(e){ toast(e.message || "放不进去"); }
   finally{ putting = false; }
 }
@@ -1260,10 +1287,20 @@ async function bumpQty(id, delta){
 async function removeItem(id){
   const hit = findItem(id);
   const name = hit ? hit.item.name : "这件东西";
+  const tid = hit ? hit.item.type_id : 0;
+  const outQty = hit ? (hit.item.qty || 1) : 1;
+  const t = tid ? (state.types || []).find(x=>x.id === tid) : null;
   try{
     await api("DELETE","/api/items/"+id+"?who="+encodeURIComponent(who||"家人"));
     state = await api("GET","/api/state");
-    render(); toast(`「${name}」已取出，点物品名可以再放回来`);
+    /* 从柜子拿出来＝还在家里用着，记成「在用」，总数不会凭空少掉 */
+    let extra = "";
+    if(t){
+      const next = Math.min(999, (t.inuse || 0) + outQty);
+      state = await api("PATCH","/api/types/"+tid,{inuse: next, who});
+      extra = `，${next} 件记为在用`;
+    }
+    render(); toast(`「${name}」已取出${extra}，想收起来点物品名再放回去`);
   }catch(e){ toast(e.message || "取出失败"); }
 }
 
@@ -1278,8 +1315,8 @@ function openItemEdit(id){
 }
 function openTypeEdit(id){
   const t = (state.types||[]).find(x=>x.id===id); if(!t) return;
-  edCtx = {kind:"type", typeId:t.id, name:t.name, cat:t.category};
-  drawEdit("修改物品库", "物品库是基础数据，改一次柜子里都跟着改", false);
+  edCtx = {kind:"type", typeId:t.id, name:t.name, cat:t.category, inuse:t.inuse||0};
+  drawEdit("修改物品库", "在用 = 没放进柜子、但家里正在用的（比如冬天床上盖的被子）", false);
 }
 function drawEdit(title, sub, withQty){
   el("edTitle").textContent = title;
@@ -1290,9 +1327,17 @@ function drawEdit(title, sub, withQty){
     el("edQty").value = edCtx.qty || 1;
     el("edNote").value = edCtx.note || "";
   }
+  const withUse = edCtx.kind === "type";
+  el("edUseRow").style.display = withUse ? "flex" : "none";
+  if(withUse) el("edUseNum").textContent = edCtx.inuse || 0;
   drawEdCats();
   el("edMask").classList.add("on");
   setTimeout(()=>el("edName").focus(), 120);
+}
+function stepEdUse(d){
+  if(!edCtx) return;
+  edCtx.inuse = Math.max(0, Math.min(999, (edCtx.inuse || 0) + d));
+  el("edUseNum").textContent = edCtx.inuse;
 }
 function drawEdCats(){
   el("edCats").innerHTML = cats().map(c=>
@@ -1314,8 +1359,12 @@ async function saveEdit(){
   try{
     const t = (state.types||[]).find(x=>x.id===edCtx.typeId);
     const needType = !t || t.name !== name || t.category !== cat;
+    const needUse = edCtx.kind === "type" && t && (t.inuse||0) !== (edCtx.inuse||0);
     if(needType && edCtx.typeId){
       state = await api("PATCH","/api/types/"+edCtx.typeId,{name, category:cat, who});
+    }
+    if(needUse){
+      state = await api("PATCH","/api/types/"+edCtx.typeId,{inuse: edCtx.inuse||0, who});
     }
     if(edCtx.kind === "item"){
       let typeId = edCtx.typeId;
@@ -1404,17 +1453,18 @@ function closeLib(){
 }
 function renderLib(){
   const types = typesNow().slice().sort((a,b)=>a.name.localeCompare(b.name,"zh-Hans-CN"));
+  const useSum = types.reduce((s,t)=>s + (t.inuse||0), 0);
   el("libSub").textContent = types.length
-    ? `${curFloor} 的物品库共 ${types.length} 种，已经放了 ${types.filter(t=>placeOf(t)).length} 种（其他楼层各有一份自己的）`
+    ? `${curFloor} 的物品库共 ${types.length} 种，柜里放了 ${types.filter(t=>placeOf(t)).length} 种${useSum?"，在用 "+useSum+" 件":""}（其他楼层各有一份自己的）`
     : `${curFloor} 的物品库还没有东西，先在下面加一个`;
   el("libList").innerHTML = types.length ? types.map(t=>`
     <div class="lib-row">
       <span class="cat" style="width:9px;height:9px;border-radius:50%;background:${catColor(t.category)};flex:0 0 auto"></span>
       <div class="body" onclick="openTypeEdit(${t.id})">
-        <b>${esc(t.name)}</b>
-        <small>${esc(t.category)} · ${placeOf(t) ? "在 "+esc(placeOf(t).room)+" "+esc(placeOf(t).code)+"（"+placeOf(t).qty+" 件）" : curFloor+" 还没放"}</small>
+        <b>${esc(t.name)}${t.inuse?" <em style='font-style:normal;font-size:10.5px;color:#8A6A3B;background:#FBF0D9;border:1px solid #EBD9AE;border-radius:999px;padding:1px 6px;margin-left:4px'>在用 "+t.inuse+"</em>":""}</b>
+        <small>${esc(t.category)} · ${placeOf(t) ? "在 "+esc(placeOf(t).room)+" "+esc(placeOf(t).code)+"（"+placeOf(t).qty+" 件）" : curFloor+" 还没放进柜子"}${t.inuse?" · 使用中 "+t.inuse+" 件":""}</small>
       </div>
-      <button class="mini-edit" onclick="openTypeEdit(${t.id})" title="改名/换分类">✎</button>
+      <button class="mini-edit" onclick="openTypeEdit(${t.id})" title="改名/换分类/改在用数量">✎</button>
       <button class="del" onclick="delType(${t.id})" title="删除">🗑</button>
     </div>`).join("") : `<div class="empty-state"><span class="big">📦</span>物品库是空的</div>`;
   renderCatChips();
@@ -1557,11 +1607,44 @@ function renderAll(){
       </div>`);
     });
   });
+  /* 使用中：没放进柜子，但在家里用着的那几件 */
+  const useTypes = typesNow().filter(t=>(t.inuse||0) > 0 && (!q ||
+      [t.name, t.category, "在用", "使用中", "不在柜子"].join(" ").toLowerCase().includes(q)))
+    .sort((a,b)=>a.name.localeCompare(b.name,"zh-Hans-CN"));
+  const useTotal = useTypes.reduce((s,t)=>s + t.inuse, 0);
+  if(useTypes.length){
+    total += useTotal; kinds += useTypes.length;
+    parts.push(`<div class="all-group">
+      <div class="all-ghead">
+        <b>在用 · 不在柜子里</b><span>正在使用</span>
+        <span class="cnt">${useTotal} 件</span>
+      </div>
+      ${useTypes.map(t=>`<div class="all-row">
+        <span class="catdot" style="background:${catColor(t.category)}"></span>
+        <div class="body" onclick="openTypeEdit(${t.id})"><b>${esc(t.name)}</b>
+          <small>${esc(t.category)} · 使用中 ${t.inuse} 件，要收起来就放进柜子</small></div>
+        <button class="mini-edit" onclick="bumpInUse(${t.id},-1)" title="少一件在用">−</button>
+        <button class="mini-edit" onclick="bumpInUse(${t.id},1)" title="多一件在用">＋</button>
+      </div>`).join("")}
+    </div>`);
+  }
   el("allSub").textContent = q
-    ? `筛出 ${kinds} 种 · 共 ${total} 件`
-    : `共 ${kinds} 种 · ${total} 件，点名字就能直接改`;
+    ? `筛出 ${kinds} 种 · 共 ${total} 件（含在用 ${useTotal} 件）`
+    : `共 ${kinds} 种 · ${total} 件（含在用 ${useTotal} 件），点名字就能直接改`;
   el("allList").innerHTML = parts.length ? parts.join("")
     : `<div class="empty-state"><span class="big">🔍</span>没有找到对应的东西</div>`;
+}
+/* 使用中数量：不在柜子里但在家里用着的东西（冬天盖着的被子等） */
+async function bumpInUse(id, delta){
+  const t = (state.types || []).find(x=>x.id === id);
+  if(!t) return;
+  const next = Math.max(0, Math.min(999, (t.inuse || 0) + delta));
+  if(next === (t.inuse || 0)) return;
+  try{
+    state = await api("PATCH","/api/types/"+id,{inuse: next, who});
+    render();
+    toast(next ? `「${t.name}」使用中 ${next} 件` : `「${t.name}」不再算使用中`);
+  }catch(e){ toast(e.message || "改不了，稍后再试"); }
 }
 el("allClose").onclick = closeAll;
 el("allQ").addEventListener("input", renderAll);
