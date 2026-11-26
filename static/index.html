@@ -188,7 +188,7 @@ header.top{
 .cab.half .cab-code{font-size:9.5px;letter-spacing:.3px;padding:0 5px}
 .cab.half .cab-count{font-size:9.5px;padding:0 5px}
 
-.cab-body{position:relative;height:118px;margin:9px 11px 0;perspective:700px;
+.cab-body{position:relative;height:118px;margin:9px 11px 0;
   border-radius:9px;box-shadow:0 8px 14px -9px rgba(84,64,40,.45)}
 .cab-frame{
   position:absolute;top:0;right:0;bottom:0;left:0;border-radius:9px;overflow:hidden;
@@ -475,7 +475,7 @@ button,.tab,.top-btn,.cab,.room-add,.icon-btn{touch-action:manipulation;-webkit-
     <div class="logs" id="logs"></div>
   </div>
 
-  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1127</span></div>
+  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1128</span> <span id="kern"></span></div>
 </div>
 
 <div class="mask" id="mask"></div>
@@ -634,6 +634,7 @@ button,.tab,.top-btn,.cab,.room-add,.icon-btn{touch-action:manipulation;-webkit-
 <div class="toast" id="toast"></div>
 
 <script>
+const VER = "v1128";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
 const BASE_COLOR = {"被子":"#9DC0AD","床单":"#E3C878","被套":"#DDA077","枕头":"#A9BEDB","毛毯":"#CFA6C0","其他":"#C3B9AA"};
 const PALETTE = ["#8FB0A8","#D9B36C","#B3A0C9","#C7A98B","#94AEBB","#D6A0A0","#A8B98E"];
 /* 种类来自后端，可以自己加，颜色按顺序分配 */
@@ -672,9 +673,24 @@ async function api(method, path, body){
 
 /* ---------- 加载与渲染 ---------- */
 let lastSyncAt = 0, lastSig = "";
+/* 服务端版本比页面新 → 手机浏览器还在用缓存的旧页面，自动带新参数重载一次（防死循环） */
+function verCheck(sv){
+  if(!sv || sv === VER) return false;
+  try{
+    if(sessionStorage.getItem("_verBust") === sv) return false;
+    sessionStorage.setItem("_verBust", sv);
+  }catch(e){}
+  try{
+    const u = new URL(location.href);
+    u.searchParams.set("_v", String(Date.now()));
+    location.replace(u.toString());
+  }catch(e){ location.reload(); }
+  return true;
+}
 async function load(){
   try{
     state = await api("GET","/api/state");
+    if(verCheck(state.ver)) return;
     lastSig = JSON.stringify(state);
     lastSyncAt = Date.now();
     render();
@@ -686,6 +702,13 @@ async function load(){
 function render(){
   if(!state) return;
   applyDoor();
+  /* 底部诊断：内核大版本 + 是否走了兼容写法，手机截图就能看出加载的是哪版 */
+  (function(){
+    const m = navigator.userAgent.match(/Chrome\/(\d+)/);
+    let ins = false;
+    try{ ins = !!(window.CSS && CSS.supports && CSS.supports("inset","0px")); }catch(e){}
+    el("kern").textContent = "· 内核 " + (m ? m[1] : "?") + (ins ? "" : " · 兼容");
+  })();
   el("whoName").textContent = who || "家人";
   let total = 0;
   state.rooms.forEach(r=>{ total += r.count; });

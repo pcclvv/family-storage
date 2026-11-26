@@ -23,6 +23,7 @@ DB_PATH = os.path.join(DATA, "storage.db")
 
 CATEGORIES = ["被子", "床单", "被套", "枕头", "毛毯", "其他"]   # 初始种类，之后可在页面上自己加
 ROOM_PREFIX = ["A", "B", "C", "D", "E", "F", "G", "H"]
+PAGE_VER = "v1128"   # 页面版本号，前端拿它对比，不一致就强制重载（防手机缓存旧页面）
 _db_lock = threading.Lock()
 
 
@@ -300,7 +301,7 @@ def get_state():
                                         "label": "%s %s" % (room["name"], cab["code"])}
     for t in types:
         t["place"] = place.get(t["id"])
-    return {"rooms": rooms, "logs": logs, "types": types, "categories": cats, "cats": cats_rows, "cfg": cfg}
+    return {"rooms": rooms, "logs": logs, "types": types, "categories": cats, "cats": cats_rows, "cfg": cfg, "ver": PAGE_VER}
 
 
 TABLE_COLS = {
