@@ -342,6 +342,15 @@ button,.tab,.top-btn,.cab,.room-add,.icon-btn{touch-action:manipulation;-webkit-
   .cab.open-doors .cab-body{transform:scale(.94);opacity:.85}
 }
 
+/* 简洁模式（内核不认宽度设置时的兑底）：柜子取消多列，全宽堆叠，任何内核都不会乱 */
+body.fb .cabs .cab-row{display:block}
+body.fb .cabs .cab{display:block;width:auto !important;min-width:0 !important;max-width:none !important;
+  flex:none !important;margin:0 0 12px}
+body.fb .cabs{display:block}
+.diag-bar{display:none;font-size:11px;color:#8A9B8E;background:#EFF5EF;border:1px solid #D8E5D8;
+  border-radius:8px;padding:4px 10px;margin:8px 0 0;text-align:center}
+.diag-bar.warn{color:#9A6B2F;background:#F9F1E2;border-color:#EAD9BC}
+
 /* ---------- 搜索结果 ---------- */
 .results{margin-top:18px;display:none}
 .results.on{display:block}
@@ -512,8 +521,7 @@ button,.tab,.top-btn,.cab,.room-add,.icon-btn{touch-action:manipulation;-webkit-
     </button>
   </div>
 </header>
-
-<div class="wrap">
+<div class="wrap"><div class="diag-bar" id="diagBar"></div>
   <div class="overview">
     <div class="stat link" id="stTotalCard" onclick="openAll()" role="button" tabindex="0"><span>物品总数</span><b id="stTotal">0<i>件</i></b><em class="tap">点开看明细 ›</em></div>
     <div class="stat link" id="stTypesCard" onclick="openLib()" role="button" tabindex="0"><span>物品品类</span><b id="stTypes">0<i>种</i></b><em class="tap">点开物品库 ›</em></div>
@@ -527,7 +535,7 @@ button,.tab,.top-btn,.cab,.room-add,.icon-btn{touch-action:manipulation;-webkit-
     <div class="logs" id="logs"></div>
   </div>
 
-  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1136</span> <span id="kern"></span> <span id="diag"></span></div>
+  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1137</span> <span id="kern"></span> <span id="diag"></span></div>
 </div>
 
 <div class="mask" id="mask"></div>
@@ -686,7 +694,7 @@ button,.tab,.top-btn,.cab,.room-add,.icon-btn{touch-action:manipulation;-webkit-
 <div class="toast" id="toast"></div>
 
 <script>
-const VER = "v1136";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
+const VER = "v1137";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
 const BASE_COLOR = {"被子":"#9DC0AD","床单":"#E3C878","被套":"#DDA077","枕头":"#A9BEDB","毛毯":"#CFA6C0","其他":"#C3B9AA"};
 const PALETTE = ["#8FB0A8","#D9B36C","#B3A0C9","#C7A98B","#94AEBB","#D6A0A0","#A8B98E"];
 /* 种类来自后端，可以自己加，颜色按顺序分配 */
@@ -807,9 +815,9 @@ function render(){
 
 /* JS 像素排版：量出每行实际宽度，给每张卡片写死像素宽度。
    三重保险：① 内联 style ② 动态注入的 <style> 规则（防止个别内核丢弃内联样式）
-   ③ 排版结果回读到页脚诊断区，一眼看出是否生效 */
+   ③ 自检回读：若浏览器不认这些宽度，自动切换简洁模式（每个柜子铺满一行堆叠） */
 function layoutRows(){
-  let info = "", ok = false;
+  let info = "", ok = false, bad = 0;
   try{
     const GAP = 12;
     let css = "";
@@ -824,33 +832,49 @@ function layoutRows(){
       const unit = (rowW - (K-1)*GAP) / U;
       for(let i=0; i<kids.length; i++){
         const c = kids[i];
-        const wpx = (((parseInt(c.getAttribute("data-wu"), 10) || 2) * unit)).toFixed(1) + "px";
+        const wantPx = (parseInt(c.getAttribute("data-wu"), 10) || 2) * unit;
+        const wpx = wantPx.toFixed(1) + "px";
         c.style.flex = "0 0 " + wpx;
         c.style.width = wpx;
         c.style.maxWidth = wpx;
         c.style.minWidth = "0";
         const cid = c.getAttribute("data-cab");
         if(cid) css += '.cab[data-cab="'+cid+'"]{width:'+wpx+'!important;flex:0 0 '+wpx+'!important;max-width:'+wpx+'!important;min-width:0!important}\n';
+        /* 自检：读回实际宽度，偏差超过3px说明内核没认这些宽度设置 */
+        if(Math.abs(c.offsetWidth - wantPx) > 3) bad++;
       }
-      if(kids.length >= 2){
+      if(!info && kids.length >= 2){
         const ws = [];
         for(let i=0;i<kids.length;i++) ws.push(kids[i].offsetWidth);
-        const same = ws.every(function(w){ return Math.abs(w - ws[ws.length-1]) < 2 || w < ws[ws.length-1]/1.5; });
-        info = "行宽" + Math.round(rowW) + "px 柜宽" + ws.join("/") + (same ? "✓" : "✗");
+        info = "行宽" + Math.round(rowW) + "px 柜宽" + ws.join("/");
         ok = true;
       }
     }
   }catch(err){
     info = "失败:" + ((err && err.message) || err);
+    bad = 1;
   }
-  /* 注入样式表规则作为第二重保险 */
+  /* 注入样式表规则作为第二重保险；简洁模式下不再注入像素规则 */
   try{
     let sheet = document.getElementById("pxSheet");
     if(!sheet){ sheet = document.createElement("style"); sheet.id = "pxSheet"; document.head.appendChild(sheet); }
-    sheet.textContent = css || "";
+    sheet.textContent = broken ? "" : (css || "");
   }catch(_){}
+  /* 自检不过 → 切换简洁模式：柜子全宽堆叠，任何内核都不会乱 */
+  const broken = bad > 0;
+  if(document.body.className.indexOf("fb") >= 0 !== broken){
+    document.body.className = broken ? document.body.className + " fb" : document.body.className.replace(/\s*\bfb\b/g, "");
+  }
   const d = document.getElementById("diag");
-  if(d) d.textContent = "排版" + (ok ? info : info);
+  const bar = document.getElementById("diagBar");
+  const txt = broken ? "检测到浏览器排版异常，已切换简洁模式（柜子全宽堆叠）"
+                     : (ok ? "排版正常 " + info : "排版准备中…");
+  if(d) d.textContent = txt;
+  if(bar){
+    bar.textContent = txt;
+    bar.className = "diag-bar" + (broken ? " warn" : "");
+    bar.style.display = "block";
+  }
 }
 window.addEventListener("resize", layoutRows);
 window.addEventListener("orientationchange", function(){ setTimeout(layoutRows, 150); });
