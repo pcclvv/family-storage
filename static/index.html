@@ -535,7 +535,7 @@ body.fb .cabs{display:block}
     <div class="logs" id="logs"></div>
   </div>
 
-  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1137</span> <span id="kern"></span> <span id="diag"></span></div>
+  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1138</span> <span id="kern"></span> <span id="diag"></span></div>
 </div>
 
 <div class="mask" id="mask"></div>
@@ -694,7 +694,7 @@ body.fb .cabs{display:block}
 <div class="toast" id="toast"></div>
 
 <script>
-const VER = "v1137";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
+const VER = "v1138";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
 const BASE_COLOR = {"被子":"#9DC0AD","床单":"#E3C878","被套":"#DDA077","枕头":"#A9BEDB","毛毯":"#CFA6C0","其他":"#C3B9AA"};
 const PALETTE = ["#8FB0A8","#D9B36C","#B3A0C9","#C7A98B","#94AEBB","#D6A0A0","#A8B98E"];
 /* 种类来自后端，可以自己加，颜色按顺序分配 */
@@ -840,6 +840,24 @@ function layoutRows(){
         c.style.minWidth = "0";
         const cid = c.getAttribute("data-cab");
         if(cid) css += '.cab[data-cab="'+cid+'"]{width:'+wpx+'!important;flex:0 0 '+wpx+'!important;max-width:'+wpx+'!important;min-width:0!important}\n';
+        /* 卡片内部三段（头部/木柜/底部）也写死像素宽度：部分手机内核纵向 flex
+           子元素不自动拉伸，木柜会按内容收缩变窄（看起来每个格子宽窄不一） */
+        const parts = c.children;
+        for(let j=0; j<parts.length; j++){
+          const s = parts[j];
+          s.style.boxSizing = "border-box";
+          let sw = wantPx;
+          if(s.className.indexOf("cab-body") >= 0){
+            const cs2 = getComputedStyle(s);
+            sw = Math.max(40, wantPx - (parseFloat(cs2.marginLeft)||0) - (parseFloat(cs2.marginRight)||0));
+          }
+          const swx = sw.toFixed(1) + "px";
+          s.style.width = swx;
+          s.style.maxWidth = swx;
+          const sc = ".cab[data-cab="+cid+"] "+(s.className.indexOf("cab-body")>=0?".cab-body":s.className.indexOf("cab-head")>=0?".cab-head":".cab-foot");
+          if(cid) css += sc+'{width:'+swx+'!important;max-width:'+swx+'!important;box-sizing:border-box!important}\n';
+          if(Math.abs(s.offsetWidth - sw) > 3) bad++;
+        }
         /* 自检：读回实际宽度，偏差超过3px说明内核没认这些宽度设置 */
         if(Math.abs(c.offsetWidth - wantPx) > 3) bad++;
       }
