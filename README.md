@@ -67,3 +67,24 @@ data/storage.db    # 运行后生成的 SQLite 数据库（不入库）
 
 - 物品与柜子是「基础数据」，建议先在物品库把家里常见的床品建全，之后放柜子时点选即可
 - 数据存服务端单文件 SQLite，多人访问同一份；备份直接复制 `data/storage.db`
+
+## 发布流程（务必遵守：绝不覆盖用户数据）
+
+发布包里带的是本地 `data/storage.db`，直接上传会把线上用户这段时间的增删改冲掉。
+所以每次发布前后必须用守卫脚本，它会把「线上当前真实数据」冻结成基准，同步到本地，
+发布后再核对；万一数据被旧包覆盖，自动从基准恢复。
+
+```bash
+# 1. 发布前：冻结线上数据基准 + 同步到本地 + 自检
+python publish_guard.py pre        # 看到「✓ 发布前校验通过」才继续
+
+# 2. 发布（更新线上程序，链接不变）
+#    workbuddy_sites_deploy(directory=本目录, startCmd="python server.py")
+
+# 3. 发布后：核对用户数据，少了就自动恢复
+python publish_guard.py post       # 看到「✓ 发布后校验通过」才算完成
+```
+
+- 基准文件：`D:/WorkData/quiltmap-backup/publish-baseline.json`（每次 pre 自动重写为最新）
+- 历史基准：同目录 `baseline-时间戳.json`，需要时可用 `sync_from_live.py --from 文件` 恢复
+- 手动恢复线上：`publish_guard.py` 的 post 会自动做；只需回滚时把某份基准复制成 publish-baseline.json 再跑 post
