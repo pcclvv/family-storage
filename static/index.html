@@ -503,6 +503,13 @@ body.fb .cabs{display:block}
 .del:active{background:#F8E7DF}
 .mini-edit{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;color:#8A9C90;flex:0 0 auto}
 .mini-edit:active{background:var(--sage-soft)}
+/* 「在用」勾选框：勾上＝在外面用着，不勾＝在柜子里 */
+.usebox{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#A2937B;flex:0 0 auto;cursor:pointer;user-select:none;-webkit-user-select:none}
+.usebox .box{width:18px;height:18px;border:1.5px solid #D8CDB8;border-radius:5px;background:#fff;
+  display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:transparent;flex:0 0 auto;font-style:normal;transition:all .15s}
+.usebox.on .box{background:#7FA98F;border-color:#7FA98F;color:#fff}
+.usebox.on{color:#6E8F7C;font-weight:600}
+.usebox i{font-style:normal}
 .empty-state{text-align:center;padding:24px 12px;color:var(--muted);font-size:13px;
   background:#FBF8F1;border:1px dashed #E5DAC5;border-radius:14px;margin-bottom:6px}
 .empty-state .big{font-size:26px;display:block;margin-bottom:6px;opacity:.55}
@@ -633,7 +640,7 @@ body.fb .cabs{display:block}
     <div class="logs" id="logs"></div>
   </div>
 
-  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1150</span></div>
+  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1151</span></div>
 </div>
 
 <div class="mask" id="mask"></div>
@@ -784,17 +791,17 @@ body.fb .cabs{display:block}
     <p id="edSub">改了名字，所有柜子里都跟着改</p>
     <input class="field" id="edName" placeholder="物品名称，如 冬被" maxlength="40" style="width:100%">
     <div class="chips" id="edCats" style="margin:11px 0 0"></div>
+    <input class="field" id="edTNote" placeholder="备注（点开这件物品就能看到）" maxlength="60" style="width:100%;display:none;margin-top:2px">
     <div class="form-row" id="edQtyRow" style="margin:2px 0 0">
       <input class="field small" id="edQty" type="number" min="1" max="999" inputmode="numeric">
       <input class="field" id="edNote" placeholder="备注（可留空）" maxlength="40">
     </div>
-    <div class="form-row" id="edUseRow" style="display:none;margin:10px 0 0">
-      <button class="top-btn" type="button" onclick="stepEdUse(-1)">−</button>
-      <div style="flex:1;text-align:center;font-size:12.5px;color:#6E6250;line-height:1.35">
-        <b id="edUseNum" style="font-size:17px">0</b> 件在用<br>
-        <span style="font-size:11px;color:#A2937B">没放进柜子，但家里正在用</span>
+    <div class="form-row" id="edUseRow" style="display:none;margin:10px 0 0;align-items:center">
+      <span class="usebox" id="edUseBox" onclick="toggleEdUse()"><span class="box">✓</span></span>
+      <div style="flex:1;font-size:12.5px;color:#6E6250;line-height:1.35">
+        <b id="edUseLab" style="font-size:12.5px">在外面用（在用）</b><br>
+        <span style="font-size:11px;color:#A2937B">勾上＝没放进柜子、在外面用；不勾＝已放进柜子</span>
       </div>
-      <button class="top-btn" type="button" onclick="stepEdUse(1)">＋</button>
     </div>
     <div class="row">
       <button class="ghost" id="edCancel">取消</button>
@@ -806,7 +813,7 @@ body.fb .cabs{display:block}
 <div class="toast" id="toast"></div>
 
 <script>
-const VER = "v1150";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
+const VER = "v1151";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
 const BASE_COLOR = {"被子":"#9DC0AD","床单":"#E3C878","被套":"#DDA077","枕头":"#A9BEDB","毛毯":"#CFA6C0","其他":"#C3B9AA"};
 const PALETTE = ["#8FB0A8","#D9B36C","#B3A0C9","#C7A98B","#94AEBB","#D6A0A0","#A8B98E"];
 /* 种类来自后端，可以自己加，颜色按顺序分配 */
@@ -1357,8 +1364,8 @@ function openItemEdit(id){
 }
 function openTypeEdit(id){
   const t = (state.types||[]).find(x=>x.id===id); if(!t) return;
-  edCtx = {kind:"type", typeId:t.id, name:t.name, cat:t.category, inuse:t.inuse||0};
-  drawEdit("修改物品库", "在用 = 没放进柜子、但家里正在用的（比如冬天床上盖的被子）", false);
+  edCtx = {kind:"type", typeId:t.id, name:t.name, cat:t.category, inuse:t.inuse||0, note:t.note||""};
+  drawEdit("修改物品库", "勾「在外面用」＝没放进柜子、家里正在用；备注写在这里，点开就能看", false);
 }
 function drawEdit(title, sub, withQty){
   el("edTitle").textContent = title;
@@ -1369,17 +1376,24 @@ function drawEdit(title, sub, withQty){
     el("edQty").value = edCtx.qty || 1;
     el("edNote").value = edCtx.note || "";
   }
-  const withUse = edCtx.kind === "type";
-  el("edUseRow").style.display = withUse ? "flex" : "none";
-  if(withUse) el("edUseNum").textContent = edCtx.inuse || 0;
+  const isType = edCtx.kind === "type";
+  el("edTNote").style.display = isType ? "" : "none";
+  if(isType) el("edTNote").value = edCtx.note || "";
+  el("edUseRow").style.display = isType ? "flex" : "none";
+  if(isType) drawEdUse();
   drawEdCats();
   el("edMask").classList.add("on");
   setTimeout(()=>el("edName").focus(), 120);
 }
-function stepEdUse(d){
+function drawEdUse(){
+  const on = (edCtx.inuse||0) > 0;
+  el("edUseBox").classList.toggle("on", on);
+  el("edUseLab").textContent = on ? "在外面用（在用）" : "没在外面用（已放进柜子）";
+}
+function toggleEdUse(){
   if(!edCtx) return;
-  edCtx.inuse = Math.max(0, Math.min(999, (edCtx.inuse || 0) + d));
-  el("edUseNum").textContent = edCtx.inuse;
+  edCtx.inuse = (edCtx.inuse||0) > 0 ? 0 : 1;
+  drawEdUse();
 }
 function drawEdCats(){
   el("edCats").innerHTML = cats().map(c=>
@@ -1401,12 +1415,17 @@ async function saveEdit(){
   try{
     const t = (state.types||[]).find(x=>x.id===edCtx.typeId);
     const needType = !t || t.name !== name || t.category !== cat;
-    const needUse = edCtx.kind === "type" && t && (t.inuse||0) !== (edCtx.inuse||0);
-    if(needType && edCtx.typeId){
+    if(edCtx.kind === "type"){
+      const note = el("edTNote").value.trim();
+      const body = {who};
+      if(needType){ body.name = name; body.category = cat; }
+      if(!t || (t.inuse||0) !== (edCtx.inuse||0)) body.inuse = edCtx.inuse||0;
+      if(!t || (t.note||"") !== note) body.note = note;
+      if(Object.keys(body).length > 1){
+        state = await api("PATCH","/api/types/"+edCtx.typeId, body);
+      }
+    } else if(needType && edCtx.typeId){
       state = await api("PATCH","/api/types/"+edCtx.typeId,{name, category:cat, who});
-    }
-    if(needUse){
-      state = await api("PATCH","/api/types/"+edCtx.typeId,{inuse: edCtx.inuse||0, who});
     }
     if(edCtx.kind === "item"){
       let typeId = edCtx.typeId;
@@ -1502,9 +1521,9 @@ function renderLib(){
   el("libList").innerHTML = types.length ? types.map(t=>`
     <div class="lib-row">
       <span class="cat" style="width:9px;height:9px;border-radius:50%;background:${catColor(t.category)};flex:0 0 auto"></span>
-      <div class="body" onclick="openTypeEdit(${t.id})">
-        <b>${esc(t.name)}${t.inuse?" <em style='font-style:normal;font-size:10.5px;color:#8A6A3B;background:#FBF0D9;border:1px solid #EBD9AE;border-radius:999px;padding:1px 6px;margin-left:4px'>在用 "+t.inuse+"</em>":""}</b>
-        <small>${esc(t.category)} · ${placeOf(t) ? "在 "+esc(placeOf(t).room)+" "+esc(placeOf(t).code)+"（"+placeOf(t).qty+" 件）" : curFloor+" 还没放进柜子（柜外 "+outsideOf(t)+" 件）"}${t.inuse?" · 使用中 "+t.inuse+" 件":""}</small>
+      <div class="body" onclick="openTypeEdit(${t.id})" title="点开可看/改备注">
+        <b>${esc(t.name)}${t.inuse?" <em style='font-style:normal;font-size:10.5px;color:#8A6A3B;background:#FBF0D9;border:1px solid #EBD9AE;border-radius:999px;padding:1px 6px;margin-left:4px'>在用 "+t.inuse+"</em>":""}${t.note?" <em style='font-style:normal;font-size:10.5px;color:#7C8B9E;background:#EDF1F6;border:1px solid #D9E1EB;border-radius:999px;padding:1px 6px;margin-left:4px'>📝 有备注</em>":""}</b>
+        <small>${esc(t.category)} · ${placeOf(t) ? "在 "+esc(placeOf(t).room)+" "+esc(placeOf(t).code)+"（"+placeOf(t).qty+" 件）" : curFloor+" 还没放进柜子（柜外 "+outsideOf(t)+" 件）"}${t.inuse?" · 使用中 "+t.inuse+" 件":""}${t.note?" · "+esc(t.note):""}</small>
       </div>
       <button class="mini-edit" onclick="openTypeEdit(${t.id})" title="改名/换分类/改在用数量">✎</button>
       <button class="del" onclick="delType(${t.id})" title="删除">🗑</button>
@@ -1665,11 +1684,12 @@ function renderAll(){
       ${outTypes.map(t=>`<div class="all-row">
         <span class="catdot" style="background:${catColor(t.category)}"></span>
         <div class="body" onclick="openTypeEdit(${t.id})"><b>${esc(t.name)}</b>
-          <small>${esc(t.category)} · ${(t.inuse||0) > 0
-            ? "使用中 " + t.inuse + " 件，收进柜子就少一件"
-            : "还没放进柜子 · 按 1 件算"}</small></div>
-        ${(t.inuse||0) > 0 ? `<button class="mini-edit" onclick="bumpInUse(${t.id},-1)" title="少一件在用">−</button>
-        <button class="mini-edit" onclick="bumpInUse(${t.id},1)" title="多一件在用">＋</button>` : ""}
+          <small>${esc(t.category)}${t.note?" · 📝 "+esc(t.note):""} · ${(t.inuse||0) > 0
+            ? "在外面用着 "+t.inuse+" 件，收进柜子就取消勾选"
+            : (placeOf(t) ? "在 "+esc(placeOf(t).room)+" "+esc(placeOf(t).code)
+              : "还没放进柜子 · 按 1 件算")}</small></div>
+        <span class="usebox ${(t.inuse||0)>0?"on":""}" onclick="toggleUse(${t.id},event)"
+          title="勾上＝在外面用；不勾＝看在哪个柜子"><span class="box">✓</span><i>在用</i></span>
       </div>`).join("")}
     </div>`);
   }
@@ -1679,16 +1699,17 @@ function renderAll(){
   el("allList").innerHTML = parts.length ? parts.join("")
     : `<div class="empty-state"><span class="big">🔍</span>没有找到对应的东西</div>`;
 }
-/* 使用中数量：不在柜子里但在家里用着的东西（冬天盖着的被子等） */
-async function bumpInUse(id, delta){
+/* 「在用」勾选框：勾上＝没放进柜子、在外面用着；不勾＝看它放在哪个柜子 */
+async function toggleUse(id, ev){
+  if(ev) ev.stopPropagation();
   const t = (state.types || []).find(x=>x.id === id);
   if(!t) return;
-  const next = Math.max(0, Math.min(999, (t.inuse || 0) + delta));
-  if(next === (t.inuse || 0)) return;
+  const next = (t.inuse||0) > 0 ? 0 : 1;
   try{
     state = await api("PATCH","/api/types/"+id,{inuse: next, who});
     render();
-    toast(next ? `「${t.name}」使用中 ${next} 件` : `「${t.name}」不再算使用中`);
+    toast(next ? `「${t.name}」已勾选在用：在外面用着`
+               : `「${t.name}」已取消在用${placeOf(t) ? "，现在在 "+placeOf(t).room+" "+placeOf(t).code : "，还没放进柜子"}`);
   }catch(e){ toast(e.message || "改不了，稍后再试"); }
 }
 el("allClose").onclick = closeAll;

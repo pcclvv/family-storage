@@ -25,7 +25,7 @@ CATEGORIES = ["被子", "床单", "被套", "枕头", "毛毯", "其他"]   # �
 ROOM_PREFIX = ["A", "B", "C", "D", "E", "F", "G", "H"]
 FLOORS = ["F2", "F3", "F4"]     # 楼层：每层房间与柜子结构相同，柜内物品各自独立
 DEFAULT_FLOOR = "F3"            # 首页默认进 F3
-PAGE_VER = "v1150"   # 页面版本号，前端拿它对比，不一致就强制重载（防手机缓存旧页面）
+PAGE_VER = "v1151"   # 页面版本号，前端拿它对比，不一致就强制重载（防手机缓存旧页面）
 _db_lock = threading.Lock()
 
 
@@ -97,7 +97,8 @@ def init_db():
           category TEXT NOT NULL DEFAULT '其他',
           sort INTEGER NOT NULL DEFAULT 0,
           floor TEXT NOT NULL DEFAULT 'F3',
-          inuse INTEGER NOT NULL DEFAULT 0
+          inuse INTEGER NOT NULL DEFAULT 0,
+          note TEXT NOT NULL DEFAULT ''
         );
         CREATE TABLE IF NOT EXISTS cats (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -185,6 +186,8 @@ def migrate(c):
         c.execute("ALTER TABLE types ADD COLUMN floor TEXT NOT NULL DEFAULT 'F3'")
     if "inuse" not in tp_cols:      # 使用中：没放进柜子，但在家里用着（如冬天床上盖着的被子）
         c.execute("ALTER TABLE types ADD COLUMN inuse INTEGER NOT NULL DEFAULT 0")
+    if "note" not in tp_cols:       # 备注：点开物品就能看/改（如「冬天盖的厚被子，放主卧」）
+        c.execute("ALTER TABLE types ADD COLUMN note TEXT NOT NULL DEFAULT ''")
     ensure_floors(c)
     unknown = c.execute("SELECT * FROM items WHERE type_id=0").fetchall()
     for it in unknown:
@@ -369,7 +372,7 @@ def get_state():
 TABLE_COLS = {
     "rooms": {"id", "name", "sort", "floor"},
     "cabinets": {"id", "room_id", "code", "name", "size", "sort", "floor"},
-    "types": {"id", "name", "category", "sort", "floor", "inuse"},
+    "types": {"id", "name", "category", "sort", "floor", "inuse", "note"},
     "cats": {"id", "name", "sort"},
     "items": {"id", "cabinet_id", "type_id", "name", "category", "qty", "note", "who",
               "created_at", "updated_at"},
@@ -527,6 +530,7 @@ class Handler(BaseHTTPRequestHandler):
         if not name:
             return self._send(400, {"error": "物品名称不能为空"})
         cat_in = (b.get("category") or "").strip()[:10]
+        note_in = (b.get("note") or "").strip()[:120]
         fl = (b.get("floor") or "").strip().upper()
         if fl not in FLOORS:
             fl = DEFAULT_FLOOR
@@ -538,7 +542,8 @@ class Handler(BaseHTTPRequestHandler):
                 c.close()
                 return self._send(400, {"error": "%s 的物品库里已经有「%s」了" % (fl, name)})
             cat = ensure_cat(c, cat_in)
-            c.execute("INSERT INTO types(name, category, sort, floor) VALUES(?,?,0,?)", (name, cat, fl))
+            c.execute("INSERT INTO types(name, category, sort, floor, note) VALUES(?,?,0,?,?)",
+                      (name, cat, fl, note_in))
             log(c, who, "物品库", "%s 新增物品「%s」（%s）" % (fl, name, cat))
             c.commit()
             c.close()
@@ -554,7 +559,8 @@ class Handler(BaseHTTPRequestHandler):
                 inuse_set = max(0, min(999, int(b.get("inuse") or 0)))
             except Exception:
                 inuse_set = None
-        if not new_name and cat_in is None and inuse_set is None:
+        note_set = (b.get("note") or "").strip()[:120] if "note" in b else None
+        if not new_name and cat_in is None and inuse_set is None and note_set is None:
             return self._send(400, {"error": "没有要修改的内容"})
         with _db_lock:
             c = conn()
@@ -580,8 +586,8 @@ class Handler(BaseHTTPRequestHandler):
                 c.execute("UPDATE items SET category=? WHERE type_id=?", (cat, tid))
             if inuse_set is not None:
                 c.execute("UPDATE types SET inuse=? WHERE id=?", (inuse_set, tid))
-                log(c, who, "物品库", "%s 的「%s」使用中改成 %d 件"
-                    % (fl, new_name or row["name"], inuse_set))
+            if note_set is not None:
+                c.execute("UPDATE types SET note=? WHERE id=?", (note_set, tid))
             log(c, who, "物品库", "修改 %s 的物品「%s」" % (fl, new_name or row["name"]))
             c.commit()
             c.close()
