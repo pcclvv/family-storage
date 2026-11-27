@@ -657,7 +657,7 @@ body.fb .cabs{display:block}
     <div class="logs" id="logs"></div>
   </div>
 
-  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1156</span></div>
+  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1157</span></div>
 </div>
 
 <div class="mask" id="mask"></div>
@@ -886,7 +886,7 @@ body.fb .cabs{display:block}
 <div class="toast" id="toast"></div>
 
 <script>
-const VER = "v1156";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
+const VER = "v1157";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
 const BASE_COLOR = {"被子":"#9DC0AD","床单":"#E3C878","被套":"#DDA077","枕头":"#A9BEDB","毛毯":"#CFA6C0","其他":"#C3B9AA"};
 const PALETTE = ["#8FB0A8","#D9B36C","#B3A0C9","#C7A98B","#94AEBB","#D6A0A0","#A8B98E"];
 /* 种类来自后端，可以自己加，颜色按顺序分配 */
@@ -1458,11 +1458,13 @@ function openItemEdit(id){
   edCtx = {kind:"item", itemId:it.id, typeId:it.type_id, cabId:it.cabinet_id,
            name:it.name, cat:it.category, note:it.note || ""};
   drawEdit("这件物品", "看看它在哪儿、有什么备注；要改名点下面的「改名字」");
+  syncLatest();
 }
 function openTypeEdit(id){
   const t = (state.types||[]).find(x=>x.id===id); if(!t) return;
   edCtx = {kind:"type", typeId:t.id, name:t.name, cat:t.category, inuse:t.inuse||0, note:t.note||""};
   drawEdit("修改物品库", "勾「在外面用」＝没放进柜子、家里正在用；备注写在这里，点开就能看");
+  syncLatest();
 }
 function drawEdit(title, sub){
   el("edTitle").textContent = title;
@@ -1525,7 +1527,27 @@ function toggleEdUse(){
 }
 function drawEdCats(){
   el("edCats").innerHTML = cats().map(c=>
-    `<button class="chip ${edCtx.cat===c?"on":""}" onclick="pickEdCat('${esc(c)}')">${esc(c)}</button>`).join("");
+    `<button class="chip ${edCtx.cat===c?"on":""}" onclick="pickEdCat('${esc(c)}')">${esc(c)}</button>`).join("")
+  + `<button class="chip" style="border-style:dashed;color:#8E8271;background:#F7F3EA" onclick="addCatInline()">＋ 种类</button>`;
+}
+/* 改物品时发现没有想要的种类：顺手加一个，加完自动选中 */
+async function addCatInline(){
+  const n = (prompt("新种类的名字（如：饰品、装饰）") || "").trim();
+  if(!n) return;
+  try{
+    state = await api("POST","/api/cats",{name:n, who});
+    edCtx.cat = n;
+    drawEdCats();
+    toast("已加种类「" + n + "」");
+  }catch(e){ toast(e.message || "添加失败"); }
+}
+/* 打开弹窗时后台同步一次最新数据：别的手机刚加的种类也能马上选到 */
+function syncLatest(){
+  api("GET","/api/state").then(s=>{
+    if(!s || !s.types) return;
+    state = s;
+    if(edCtx && el("edMask").classList.contains("on")) drawEdCats();
+  }).catch(()=>{});
 }
 function pickEdCat(c){
   edCtx.name = el("edName").value;      // 先记住已输入的文字
