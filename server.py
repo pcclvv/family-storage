@@ -25,7 +25,7 @@ CATEGORIES = ["被子", "床单", "被套", "枕头", "毛毯", "其他"]   # �
 ROOM_PREFIX = ["A", "B", "C", "D", "E", "F", "G", "H"]
 FLOORS = ["F2", "F3", "F4"]     # 楼层：每层房间与柜子结构相同，柜内物品各自独立
 DEFAULT_FLOOR = "F3"            # 首页默认进 F3
-PAGE_VER = "v1152"   # 页面版本号，前端拿它对比，不一致就强制重载（防手机缓存旧页面）
+PAGE_VER = "v1153"   # 页面版本号，前端拿它对比，不一致就强制重载（防手机缓存旧页面）
 _db_lock = threading.Lock()
 
 
@@ -584,11 +584,28 @@ class Handler(BaseHTTPRequestHandler):
                 cat = ensure_cat(c, cat_in)
                 c.execute("UPDATE types SET category=? WHERE id=?", (cat, tid))
                 c.execute("UPDATE items SET category=? WHERE type_id=?", (cat, tid))
+            extra = ""
             if inuse_set is not None:
+                if inuse_set > 0:
+                    # 勾成「在用」＝东西已经拿出来用了：直接从本层柜子里取出，
+                    # 取出的件数记到「在用」上，总数不会凭空变少
+                    got = c.execute(
+                        "SELECT COALESCE(SUM(i.qty),0) FROM items i "
+                        "JOIN cabinets cb ON cb.id=i.cabinet_id "
+                        "JOIN rooms r ON r.id=cb.room_id "
+                        "WHERE i.type_id=? AND COALESCE(NULLIF(r.floor,''),'F3')=?",
+                        (tid, fl)).fetchone()[0] or 0
+                    if got > 0:
+                        c.execute(
+                            "DELETE FROM items WHERE type_id=? AND cabinet_id IN "
+                            "(SELECT cb.id FROM cabinets cb JOIN rooms r ON r.id=cb.room_id "
+                            " WHERE COALESCE(NULLIF(r.floor,''),'F3')=?)", (tid, fl))
+                        inuse_set = min(999, max(inuse_set, (row["inuse"] or 0) + got))
+                        extra = "，从柜子取出 %d 件记为在用" % got
                 c.execute("UPDATE types SET inuse=? WHERE id=?", (inuse_set, tid))
             if note_set is not None:
                 c.execute("UPDATE types SET note=? WHERE id=?", (note_set, tid))
-            log(c, who, "物品库", "修改 %s 的物品「%s」" % (fl, new_name or row["name"]))
+            log(c, who, "物品库", "修改 %s 的物品「%s」%s" % (fl, new_name or row["name"], extra))
             c.commit()
             c.close()
         return self._send(200, get_state())

@@ -640,7 +640,7 @@ body.fb .cabs{display:block}
     <div class="logs" id="logs"></div>
   </div>
 
-  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1152</span></div>
+  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1153</span></div>
 </div>
 
 <div class="mask" id="mask"></div>
@@ -800,7 +800,7 @@ body.fb .cabs{display:block}
       <span class="usebox" id="edUseBox" onclick="toggleEdUse()"><span class="box">✓</span></span>
       <div style="flex:1;font-size:12.5px;color:#6E6250;line-height:1.35">
         <b id="edUseLab" style="font-size:12.5px">在外面用（在用）</b><br>
-        <span style="font-size:11px;color:#A2937B">勾上＝没放进柜子、在外面用；不勾＝已放进柜子</span>
+        <span style="font-size:11px;color:#A2937B">勾上＝从柜子里取出来用；不勾＝放在柜子里</span>
       </div>
     </div>
     <div class="row">
@@ -813,7 +813,7 @@ body.fb .cabs{display:block}
 <div class="toast" id="toast"></div>
 
 <script>
-const VER = "v1152";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
+const VER = "v1153";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
 const BASE_COLOR = {"被子":"#9DC0AD","床单":"#E3C878","被套":"#DDA077","枕头":"#A9BEDB","毛毯":"#CFA6C0","其他":"#C3B9AA"};
 const PALETTE = ["#8FB0A8","#D9B36C","#B3A0C9","#C7A98B","#94AEBB","#D6A0A0","#A8B98E"];
 /* 种类来自后端，可以自己加，颜色按顺序分配 */
@@ -1394,7 +1394,10 @@ function drawEdit(title, sub){
 function drawEdUse(){
   const on = (edCtx.inuse||0) > 0;
   el("edUseBox").classList.toggle("on", on);
-  el("edUseLab").textContent = on ? "在外面用（在用）" : "没在外面用（已放进柜子）";
+  if(on){ el("edUseLab").textContent = "在外面用（在用）"; return; }
+  const t = (state.types||[]).find(x=>x.id===edCtx.typeId);
+  const pl = placeOf(t);
+  el("edUseLab").textContent = pl ? "在柜子里（" + pl.room + " " + pl.code + "）" : "没在外面用 · 还没放进柜子";
 }
 function toggleEdUse(){
   if(!edCtx) return;
@@ -1713,8 +1716,8 @@ async function toggleUse(id, ev){
   try{
     state = await api("PATCH","/api/types/"+id,{inuse: next, who});
     render();
-    toast(next ? `「${t.name}」已勾选在用：在外面用着`
-               : `「${t.name}」已取消在用${placeOf(t) ? "，现在在 "+placeOf(t).room+" "+placeOf(t).code : "，还没放进柜子"}`);
+    toast(next ? `「${t.name}」已勾选在用：从柜子里取出来，记为在外面用`
+               : `「${t.name}」已取消在用${placeOf(t) ? "，现在在 "+placeOf(t).room+" "+placeOf(t).code : "，现在还不在柜子里"}`);
   }catch(e){ toast(e.message || "改不了，稍后再试"); }
 }
 el("allClose").onclick = closeAll;
