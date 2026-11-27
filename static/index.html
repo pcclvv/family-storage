@@ -640,7 +640,7 @@ body.fb .cabs{display:block}
     <div class="logs" id="logs"></div>
   </div>
 
-  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1153</span></div>
+  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1154</span></div>
 </div>
 
 <div class="mask" id="mask"></div>
@@ -702,7 +702,7 @@ body.fb .cabs{display:block}
     <div class="setting-block">
       <h4>删掉这个柜子</h4>
       <button class="btn-ghost" onclick="deleteCab()">删除柜子</button>
-      <div class="form-tip" style="text-align:left;margin-top:8px">柜子里的东西要先取出，才能删柜子</div>
+      <div class="form-tip" style="text-align:left;margin-top:8px">删柜子不会丢东西：里面的物品会自动记成「在外面用」，之后随时可以再放回别的柜子</div>
     </div>
   </div>
   <div class="form" id="addForm">
@@ -813,7 +813,7 @@ body.fb .cabs{display:block}
 <div class="toast" id="toast"></div>
 
 <script>
-const VER = "v1153";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
+const VER = "v1154";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
 const BASE_COLOR = {"被子":"#9DC0AD","床单":"#E3C878","被套":"#DDA077","枕头":"#A9BEDB","毛毯":"#CFA6C0","其他":"#C3B9AA"};
 const PALETTE = ["#8FB0A8","#D9B36C","#B3A0C9","#C7A98B","#94AEBB","#D6A0A0","#A8B98E"];
 /* 种类来自后端，可以自己加，颜色按顺序分配 */
@@ -1492,7 +1492,7 @@ async function deleteCab(){
   try{
     state = await api("DELETE","/api/cabinets/"+currentCab+"?who="+encodeURIComponent(who||"家人"));
     closeSheet(); render();
-    toast(hit.cab.count ? `柜子已删除，里面 ${hit.cab.count} 件也一并取出` : "柜子已删除");
+    toast(hit.cab.count ? `柜子已删除，里面 ${hit.cab.count} 件记成在用，没丢` : "柜子已删除");
   }catch(e){ toast(e.message || "删除失败"); }
 }
 async function setCabSize(size){
@@ -1630,6 +1630,9 @@ async function editType(id){
 }
 async function delType(id){
   const t = state.types.find(x=>x.id===id); if(!t) return;
+  const tip = t.used ? `「${t.name}」在柜子里还有 ${t.used} 件，删了会一并取出（记成在外面用）。确定删？`
+                     : `删掉物品库里的「${t.name}」？`;
+  if(!confirm(tip)) return;
   try{
     state = await api("DELETE","/api/types/"+id+"?who="+encodeURIComponent(who||"家人"));
     render();

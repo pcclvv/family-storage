@@ -25,7 +25,7 @@ CATEGORIES = ["被子", "床单", "被套", "枕头", "毛毯", "其他"]   # �
 ROOM_PREFIX = ["A", "B", "C", "D", "E", "F", "G", "H"]
 FLOORS = ["F2", "F3", "F4"]     # 楼层：每层房间与柜子结构相同，柜内物品各自独立
 DEFAULT_FLOOR = "F3"            # 首页默认进 F3
-PAGE_VER = "v1153"   # 页面版本号，前端拿它对比，不一致就强制重载（防手机缓存旧页面）
+PAGE_VER = "v1154"   # 页面版本号，前端拿它对比，不一致就强制重载（防手机缓存旧页面）
 _db_lock = threading.Lock()
 
 
@@ -532,8 +532,10 @@ class Handler(BaseHTTPRequestHandler):
         cat_in = (b.get("category") or "").strip()[:10]
         note_in = (b.get("note") or "").strip()[:120]
         fl = (b.get("floor") or "").strip().upper()
-        if fl not in FLOORS:
+        if not fl:
             fl = DEFAULT_FLOOR
+        elif fl not in FLOORS:
+            return self._send(400, {"error": "楼层不对，只能是 " + "/".join(FLOORS)})
         who = self._who(b)
         with _db_lock:
             c = conn()
@@ -953,11 +955,19 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(404, {"error": "柜子不存在"})
             got = c.execute("SELECT COALESCE(SUM(qty),0) q, COUNT(*) n FROM items WHERE cabinet_id=?",
                             (cab_id,)).fetchone()
+            # 删柜子＝里面的东西拿出来用：按物品记到「在用」，总数不会凭空变少
+            moved = c.execute(
+                "SELECT type_id, SUM(qty) q FROM items WHERE cabinet_id=? GROUP BY type_id",
+                (cab_id,)).fetchall()
+            for m in moved:
+                if m["type_id"]:
+                    c.execute("UPDATE types SET inuse=MIN(999, inuse+?) WHERE id=?",
+                              (m["q"], m["type_id"]))
             c.execute("DELETE FROM items WHERE cabinet_id=?", (cab_id,))
             c.execute("DELETE FROM cabinets WHERE id=?", (cab_id,))
             detail = "删除 %s %s 柜子" % (cab["rn"], cab["code"])
             if got["n"]:
-                detail += "，柜里 %d 种 %d 件一并取出" % (got["n"], got["q"])
+                detail += "，柜里 %d 种 %d 件记为在用" % (got["n"], got["q"])
             log(c, who, "柜子", detail)
             c.commit()
             c.close()
