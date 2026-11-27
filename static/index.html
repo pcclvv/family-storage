@@ -590,6 +590,17 @@ body.fb .cabs{display:block}
 .mini-card .row{display:flex;gap:8px;margin-top:12px}
 .mini-card .ghost{flex:1;padding:12px;border-radius:12px;background:var(--bg2);font-size:14px;color:#6E6250}
 .mini-card .ok{flex:1;padding:12px;border-radius:12px;background:var(--sage);color:#fff;font-size:14px;font-weight:600}
+/* 自绘确认弹框：只有「确认/取消」，图标、圆角、轻动画；层级要压过编辑弹窗（可在 edMask 里弹出） */
+#askMask{z-index:120}
+.mini-card .danger{flex:1;padding:12px;border-radius:12px;background:#C96A5B;color:#fff;font-size:14px;font-weight:600}
+.mini-card .danger.safe{background:var(--sage)}
+.mini-card .danger:active,.mini-card .ghost:active,.mini-card .ok:active{transform:scale(.97)}
+.ask-card{text-align:center;animation:askPop .18s ease-out}
+.ask-ic{width:52px;height:52px;margin:0 auto 10px;border-radius:50%;background:#FBEDE9;display:grid;place-items:center;font-size:24px}
+.ask-card h4{margin:0 0 6px;font-size:16.5px}
+.ask-card p{margin:0 0 4px;line-height:1.55;color:var(--muted)}
+.ask-card .field{margin:10px 0 0;font-size:14px;text-align:left}
+@keyframes askPop{from{transform:scale(.9);opacity:0}to{transform:scale(1);opacity:1}}
 .foot-note{text-align:center;font-size:11.5px;color:#B3A794;margin-top:26px}
 /* ---------- 楼层切换（F2 / F3 / F4）：每层柜子布置一样，东西各放各的 ---------- */
 .floor-bar{display:flex;align-items:center;gap:8px;margin:18px 0 0;flex-wrap:wrap}
@@ -657,7 +668,7 @@ body.fb .cabs{display:block}
     <div class="logs" id="logs"></div>
   </div>
 
-  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1158</span></div>
+  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1159</span></div>
 </div>
 
 <div class="mask" id="mask"></div>
@@ -807,6 +818,20 @@ body.fb .cabs{display:block}
     </div>
   </div>
 </div>
+<!-- 确认/输入弹框（自绘）：代替浏览器原生 confirm/prompt，
+     原生弹框在某些内核里会出现「关闭网页 / 离开」这类系统按钮，看起来像要关掉网站 -->
+<div class="mini-mask" id="askMask">
+  <div class="mini-card ask-card">
+    <div class="ask-ic" id="askIc">🗑</div>
+    <h4 id="askTitle">确定吗？</h4>
+    <p id="askMsg"></p>
+    <input id="askInput" class="field" maxlength="30" style="display:none" placeholder="">
+    <div class="row">
+      <button class="ghost" id="askNo">取消</button>
+      <button class="danger" id="askYes">确认删除</button>
+    </div>
+  </div>
+</div>
 <style>
 .pick-row{display:flex;align-items:center;gap:10px;width:100%;background:#fff;border:1px solid #EAE2D2;
   border-radius:12px;padding:11px 14px;margin-top:8px;font-family:inherit;text-align:left;cursor:pointer}
@@ -895,7 +920,7 @@ body.fb .cabs{display:block}
 <div class="toast" id="toast"></div>
 
 <script>
-const VER = "v1158";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
+const VER = "v1159";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
 const BASE_COLOR = {"被子":"#9DC0AD","床单":"#E3C878","被套":"#DDA077","枕头":"#A9BEDB","毛毯":"#CFA6C0","其他":"#C3B9AA"};
 const PALETTE = ["#8FB0A8","#D9B36C","#B3A0C9","#C7A98B","#94AEBB","#D6A0A0","#A8B98E"];
 /* 种类来自后端，可以自己加，颜色按顺序分配 */
@@ -1440,6 +1465,41 @@ async function putItem(typeId){
 el("mask").onclick = ()=>{ closeSheet(); closeLib(); closeAll(); closeCabMgr(); };
 el("shClose").onclick = closeSheet;
 
+/* ---------- 自绘确认/输入弹框：代替浏览器原生 confirm/prompt ----------
+   原生弹框在一些手机内核里会变成「关闭网页 / 离开网站」那种系统样式，
+   这里统一成应用内小卡片：图标 + 标题 + 说明，只有确认和取消两个按钮 */
+let askCb = null;
+function askConfirm(title, msg, onOk, opt){
+  opt = opt || {};
+  el("askIc").textContent = opt.icon || "🗑";
+  el("askIc").style.background = opt.danger === false ? "#EAF3EE" : "#FBEDE9";
+  el("askTitle").textContent = title;
+  el("askMsg").textContent = msg;
+  el("askMsg").style.display = msg ? "" : "none";
+  const inp = el("askInput");
+  if(opt.input){
+    inp.style.display = ""; inp.value = ""; inp.placeholder = opt.input;
+    setTimeout(()=>inp.focus(), 120);   /* 输入框是主动点出来的，可以聚焦弹键盘 */
+  }else{ inp.style.display = "none"; inp.value = ""; }
+  const yes = el("askYes");
+  yes.textContent = opt.okText || "确认删除";
+  yes.classList.toggle("safe", opt.danger === false);
+  askCb = onOk;
+  el("askMask").classList.add("on");
+}
+function closeAsk(){ el("askMask").classList.remove("on"); askCb = null; }
+el("askNo").onclick = closeAsk;
+el("askYes").onclick = ()=>{
+  const inp = el("askInput");
+  const hadInput = inp.style.display !== "none";
+  const val = inp.value.trim();
+  const cb = askCb;
+  closeAsk();
+  if(cb) cb(hadInput ? val : "");
+};
+el("askInput").addEventListener("keydown", e=>{ if(e.key === "Enter") el("askYes").click(); });
+el("askMask").addEventListener("click", e=>{ if(e.target === el("askMask")) closeAsk(); });
+
 /* 一种物品原则上只有一件：不再有加减数量，取出/放入即可 */
 
 async function removeItem(id){
@@ -1447,16 +1507,20 @@ async function removeItem(id){
   const name = hit ? hit.item.name : "这件东西";
   const tid = hit ? hit.item.type_id : 0;
   const t = tid ? (state.types || []).find(x=>x.id === tid) : null;
-  if(!confirm(`把「${name}」从柜子里取出来？取出后会记成「在外面用」，随时可以再放回别的柜子`)) return;
-  try{
-    await api("DELETE","/api/items/"+id+"?who="+encodeURIComponent(who||"家人"));
-    state = await api("GET","/api/state");
-    /* 从柜子拿出来＝还在家里用着，记成「在用」，东西不会凭空少掉 */
-    if(t){
-      state = await api("PATCH","/api/types/"+tid,{inuse: 1, who});
-    }
-    render(); toast(`「${name}」已取出，记为在外面用；想收进柜子去明细里点「放回柜子」`);
-  }catch(e){ toast(e.message || "取出失败"); }
+  askConfirm("从柜子取出来？",
+    `把「${name}」取出来，会记成「在外面用」，东西不会丢，随时可以再放回别的柜子`,
+    async ()=>{
+      try{
+        await api("DELETE","/api/items/"+id+"?who="+encodeURIComponent(who||"家人"));
+        state = await api("GET","/api/state");
+        /* 从柜子拿出来＝还在家里用着，记成「在用」，东西不会凭空少掉 */
+        if(t){
+          state = await api("PATCH","/api/types/"+tid,{inuse: 1, who});
+        }
+        render(); toast(`「${name}」已取出，记为在外面用；想收进柜子去明细里点「放回柜子」`);
+      }catch(e){ toast(e.message || "取出失败"); }
+    },
+    {icon:"🧺", okText:"取出来", danger:false});
 }
 
 /* ---------- 物品详情（先看） / 改名（点「改名字」才进编辑） ---------- */
@@ -1571,15 +1635,16 @@ function drawEdCats(){
   + `<button class="chip" style="border-style:dashed;color:#8E8271;background:#F7F3EA" onclick="addCatInline()">＋ 种类</button>`;
 }
 /* 改物品时发现没有想要的种类：顺手加一个，加完自动选中 */
-async function addCatInline(){
-  const n = (prompt("新种类的名字（如：饰品、装饰）") || "").trim();
-  if(!n) return;
-  try{
-    state = await api("POST","/api/cats",{name:n, who});
-    edCtx.cat = n;
-    drawEdCats();
-    toast("已加种类「" + n + "」");
-  }catch(e){ toast(e.message || "添加失败"); }
+function addCatInline(){
+  askConfirm("加一个新种类", "加完自动选中，物品库和柜子里都能用", async n=>{
+    if(!n) return;
+    try{
+      state = await api("POST","/api/cats",{name:n, who});
+      edCtx.cat = n;
+      drawEdCats();
+      toast("已加种类「" + n + "」");
+    }catch(e){ toast(e.message || "添加失败"); }
+  }, {icon:"➕", okText:"添加", input:"新种类的名字（如：饰品、装饰）", danger:false});
 }
 /* 打开弹窗时后台同步一次最新数据：别的手机刚加的种类也能马上选到 */
 function syncLatest(){
@@ -1673,12 +1738,16 @@ async function saveCabCode(){
 async function delCabFrom(id){
   const hit = findCab(id); if(!hit) return;
   const label = hit.room.name + " " + hit.cab.code + (hit.cab.name ? " " + hit.cab.name : "");
-  if(!confirm(`删掉 ${label}？里面 ${hit.cab.count} 件会记成「在外面用」，不会丢，之后随时可以再放回别的柜子`)) return;
-  try{
-    state = await api("DELETE","/api/cabinets/"+id+"?who="+encodeURIComponent(who||"家人"));
-    render();
-    toast(hit.cab.count ? `柜子已删除，里面 ${hit.cab.count} 件记成在用，没丢` : "柜子已删除");
-  }catch(e){ toast(e.message || "删除失败"); }
+  askConfirm("删掉这个柜子？",
+    `${label} 里的 ${hit.cab.count} 件会记成「在外面用」，不会丢，之后随时可以再放回别的柜子`,
+    async ()=>{
+      try{
+        state = await api("DELETE","/api/cabinets/"+id+"?who="+encodeURIComponent(who||"家人"));
+        render();
+        toast(hit.cab.count ? `柜子已删除，里面 ${hit.cab.count} 件记成在用，没丢` : "柜子已删除");
+      }catch(e){ toast(e.message || "删除失败"); }
+    },
+    {icon:"🚪", okText:"确认删除"});
 }
 async function setCabSize(size){
   try{
@@ -1805,11 +1874,12 @@ async function delCat(name, ev){
   if(!row) return;
   const used = (state.types || []).filter(t=>t.category === name).length;
   if(used){ toast(`「${name}」里还有 ${used} 种物品，先把它们改成别的种类`); return; }
-  if(!confirm(`删掉种类「${name}」？`)) return;
-  try{
-    state = await api("DELETE","/api/cats/"+row.id+"?who="+encodeURIComponent(who||"家人"));
-    render(); toast("已删除");
-  }catch(e){ toast(e.message || "删除失败"); }
+  askConfirm("删掉这个种类？", `种类「${name}」会被删除（里面现在没有物品）`, async ()=>{
+    try{
+      state = await api("DELETE","/api/cats/"+row.id+"?who="+encodeURIComponent(who||"家人"));
+      render(); toast("已删除");
+    }catch(e){ toast(e.message || "删除失败"); }
+  }, {icon:"🏷", okText:"确认删除"});
 }
 el("libAdd").onclick = addType;
 el("libName").addEventListener("keydown", e=>{ if(e.key==="Enter") addType(); });
@@ -1885,14 +1955,15 @@ async function exportData(){
 el("importFile").addEventListener("change", async e=>{
   const f = e.target.files && e.target.files[0];
   if(!f) return;
-  if(!confirm("导入会覆盖现在所有数据，确定吗？")){ e.target.value=""; return; }
-  try{
-    const text = await f.text();
-    const payload = JSON.parse(text);
-    state = await api("POST","/api/import", payload.data ? payload : {data: payload});
-    render(); toast("已恢复备份");
-  }catch(err){ toast("这个文件读不出来" + (err && err.message ? "：" + err.message : "")); }
   e.target.value = "";
+  askConfirm("导入这份备份？", `会用「${f.name}」覆盖现在的所有数据（柜子、物品、备注都会被替换）`, async ()=>{
+    try{
+      const text = await f.text();
+      const payload = JSON.parse(text);
+      state = await api("POST","/api/import", payload.data ? payload : {data: payload});
+      render(); toast("已恢复备份");
+    }catch(err){ toast("这个文件读不出来" + (err && err.message ? "：" + err.message : "")); }
+  }, {icon:"📥", okText:"导入并覆盖"});
 });
 el("libClose").onclick = closeLib;
 
@@ -1901,14 +1972,15 @@ async function editType(id){
 }
 async function delType(id){
   const t = state.types.find(x=>x.id===id); if(!t) return;
-  const tip = t.used ? `「${t.name}」在柜子里还有 ${t.used} 件，删了会一并取出（记成在外面用）。确定删？`
-                     : `删掉物品库里的「${t.name}」？`;
-  if(!confirm(tip)) return;
-  try{
-    state = await api("DELETE","/api/types/"+id+"?who="+encodeURIComponent(who||"家人"));
-    render();
-    toast(t.used ? `「${t.name}」已删除，柜子里的也一并取出` : "已删除");
-  }catch(e){ toast(e.message || "删除失败"); }
+  const tip = t.used ? `「${t.name}」在柜子里还有 ${t.used} 件，删了会一并取出（记成在外面用）`
+                     : `物品库里的「${t.name}」会被删除`;
+  askConfirm("删掉这个物品？", tip, async ()=>{
+    try{
+      state = await api("DELETE","/api/types/"+id+"?who="+encodeURIComponent(who||"家人"));
+      render();
+      toast(t.used ? `「${t.name}」已删除，柜子里的也一并取出` : "已删除");
+    }catch(e){ toast(e.message || "删除失败"); }
+  }, {okText:"确认删除"});
 }
 
 /* ---------- 全部物品（点顶上的总数进来） ---------- */
