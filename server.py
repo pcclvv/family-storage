@@ -25,7 +25,7 @@ CATEGORIES = ["被子", "床单", "被套", "枕头", "毛毯", "其他"]   # �
 ROOM_PREFIX = ["A", "B", "C", "D", "E", "F", "G", "H"]
 FLOORS = ["F2", "F3", "F4"]     # 楼层：每层房间与柜子结构相同，柜内物品各自独立
 DEFAULT_FLOOR = "F3"            # 首页默认进 F3
-PAGE_VER = "v1154"   # 页面版本号，前端拿它对比，不一致就强制重载（防手机缓存旧页面）
+PAGE_VER = "v1155"   # 页面版本号，前端拿它对比，不一致就强制重载（防手机缓存旧页面）
 _db_lock = threading.Lock()
 
 
@@ -133,6 +133,7 @@ def init_db():
     )
     migrate(c)
     merge_duplicate_types(c)
+    normalize_single(c)
     ensure_cats(c)
     c.execute("CREATE INDEX IF NOT EXISTS idx_items_type ON items(type_id)")
     if fresh or c.execute("SELECT COUNT(*) n FROM rooms").fetchone()["n"] == 0:
@@ -143,7 +144,7 @@ def init_db():
 
 
 def merge_duplicate_types(c):
-    """一种物品只应该待在一个柜子里；历史上重复放到多个柜子的，合并成一条（数量相加）"""
+    """一种物品只应该待在一个柜子里；历史上重复放到多个柜子的，合并成一条"""
     rows = c.execute(
         "SELECT i.type_id AS type_id, r.floor AS floor, COUNT(*) n FROM items i "
         "JOIN cabinets cb ON cb.id=i.cabinet_id JOIN rooms r ON r.id=cb.room_id "
@@ -155,14 +156,20 @@ def merge_duplicate_types(c):
             "WHERE i.type_id=? AND r.floor=? ORDER BY i.id",
             (row["type_id"], row["floor"])).fetchall()
         keep = items[0]
-        total = min(999, sum(i["qty"] for i in items))
-        c.execute("UPDATE items SET qty=? WHERE id=?", (total, keep["id"]))
         for it in items[1:]:
             c.execute("DELETE FROM items WHERE id=?", (it["id"],))
-        log(c, "系统", "整理", "「%s」在 %s 原来放在 %d 个柜子（%s），已合并到 %s %s，共 %d 件"
+        log(c, "系统", "整理", "「%s」在 %s 原来放在 %d 个柜子（%s），已合并到 %s %s"
             % (keep["name"], keep["floor"], len(items),
                "、".join("%s %s" % (i["rn"], i["code"]) for i in items),
-               keep["rn"], keep["code"], total))
+               keep["rn"], keep["code"]))
+
+
+def normalize_single(c):
+    """物品原则上只有一件：历史遗留的多件数量统一归一（一件物品 = 一条记录）"""
+    n1 = c.execute("UPDATE items SET qty=1 WHERE qty<>1").rowcount
+    n2 = c.execute("UPDATE types SET inuse=1 WHERE inuse>1").rowcount
+    if n1 or n2:
+        log(c, "系统", "整理", "按「一种物品一件」归一：%d 条柜内数量、%d 条在用数量" % (n1, n2))
 
 
 def migrate(c):
@@ -281,21 +288,21 @@ def seed(c):
 
     ts = now_str()
     demo = [
-        ("A1", "冬被", 2, "厚羽绒，压缩袋装"),
-        ("A1", "四件套", 1, "灰色棉麻"),
-        ("A2", "夏被", 1, "薄空调被"),
-        ("A3", "蚕丝被", 1, ""),
-        ("A4", "床单", 3, "1.8m 三条"),
-        ("B2", "枕头", 4, "乳胶枕两只"),
-        ("B2", "毛毯", 1, "珊瑚绒"),
-        ("B5", "被套", 2, "备用"),
+        ("A1", "冬被", "厚羽绒，压缩袋装"),
+        ("A1", "四件套", "灰色棉麻"),
+        ("A2", "夏被", "薄空调被"),
+        ("A3", "蚕丝被", ""),
+        ("A4", "床单", "1.8m 床单"),
+        ("B2", "枕头", "乳胶枕"),
+        ("B2", "毛毯", "珊瑚绒"),
+        ("B5", "被套", "备用"),
     ]
-    for code, name, qty, note in demo:
+    for code, name, note in demo:
         cat = dict(lib)[name]
         c.execute(
             "INSERT INTO items(cabinet_id,type_id,name,category,qty,note,who,created_at,updated_at) "
-            "VALUES(?,?,?,?,?,?,?,?,?)",
-            (cab_ids[code], tid[name], name, cat, qty, note, "示例", ts, ts))
+            "VALUES(?,?,?,?,1,?,?,?,?)",
+            (cab_ids[code], tid[name], name, cat, note, "示例", ts, ts))
     c.execute("INSERT INTO logs(who,action,detail,at) VALUES(?,?,?,?)",
               ("系统", "初始化", "已创建 主卧/次卧 各 5 个柜子，物品库预置 8 种常见床品", ts))
 
@@ -558,7 +565,8 @@ class Handler(BaseHTTPRequestHandler):
         inuse_set = None
         if "inuse" in b:
             try:
-                inuse_set = max(0, min(999, int(b.get("inuse") or 0)))
+                # 「在用」只是个勾选：勾上＝在外面用（1），不勾＝不在用（0）
+                inuse_set = 1 if int(b.get("inuse") or 0) > 0 else 0
             except Exception:
                 inuse_set = None
         note_set = (b.get("note") or "").strip()[:120] if "note" in b else None
@@ -602,8 +610,8 @@ class Handler(BaseHTTPRequestHandler):
                             "DELETE FROM items WHERE type_id=? AND cabinet_id IN "
                             "(SELECT cb.id FROM cabinets cb JOIN rooms r ON r.id=cb.room_id "
                             " WHERE COALESCE(NULLIF(r.floor,''),'F3')=?)", (tid, fl))
-                        inuse_set = min(999, max(inuse_set, (row["inuse"] or 0) + got))
-                        extra = "，从柜子取出 %d 件记为在用" % got
+                        inuse_set = 1
+                        extra = "，已从柜子取出记为在用"
                 c.execute("UPDATE types SET inuse=? WHERE id=?", (inuse_set, tid))
             if note_set is not None:
                 c.execute("UPDATE types SET note=? WHERE id=?", (note_set, tid))
@@ -719,10 +727,7 @@ class Handler(BaseHTTPRequestHandler):
             cab_id = int(b.get("cabinetId"))
         except Exception:
             return self._send(400, {"error": "缺少柜子"})
-        try:
-            qty = max(1, min(999, int(b.get("qty") or 1)))
-        except Exception:
-            qty = 1
+        # 一种物品原则上只有一件，数量固定 1
         note = (b.get("note") or "").strip()[:120]
         who = self._who(b)
         ts = now_str()
@@ -764,9 +769,9 @@ class Handler(BaseHTTPRequestHandler):
                 (typ["id"], cab_id, cab["floor"])).fetchone()
             if other:
                 c.close()
-                return self._send(409, {"error": "本层的「%s」已经在 %s %s 里（%d 件）。同层一种物品只放一个柜子，"
+                return self._send(409, {"error": "本层的「%s」已经在 %s %s 里。同层一种物品只放一个柜子，"
                                                  "想换地方先在原柜子里取出"
-                                                 % (typ["name"], other["rn"], other["code"], other["qty"])})
+                                                 % (typ["name"], other["rn"], other["code"])})
             exist = c.execute("SELECT * FROM items WHERE cabinet_id=? AND type_id=?",
                               (cab_id, typ["id"])).fetchone()
             # 柜子底部手动新增时可以自定义显示名（类型仍在物品库维护，只做挂靠）
@@ -774,17 +779,18 @@ class Handler(BaseHTTPRequestHandler):
             if disp and disp == typ["name"]:
                 disp = ""
             if exist:
-                newqty = min(999, exist["qty"] + qty)
-                c.execute("UPDATE items SET qty=?, note=?, updated_at=? WHERE id=?",
-                          (newqty, note or exist["note"], ts, exist["id"]))
-                log(c, who, "添加", "%s %s 的「%s」加到 %d 件" % (cab["name"], cab["code"], exist["name"], newqty))
+                # 已经在这个柜子里了：不重复加，只顺手把备注补上（一件物品只有一件）
+                if note and note != exist["note"]:
+                    c.execute("UPDATE items SET note=?, updated_at=? WHERE id=?",
+                              (note, ts, exist["id"]))
+                log(c, who, "添加", "%s %s 的「%s」已经在柜子里了" % (cab["name"], cab["code"], exist["name"]))
             else:
                 item_name = disp or typ["name"]
                 c.execute(
                     "INSERT INTO items(cabinet_id,type_id,name,category,qty,note,who,created_at,updated_at) "
-                    "VALUES(?,?,?,?,?,?,?,?,?)",
-                    (cab_id, typ["id"], item_name, typ["category"], qty, note, who, ts, ts))
-                log(c, who, "添加", "%s %s 放入「%s」×%d" % (cab["name"], cab["code"], item_name, qty))
+                    "VALUES(?,?,?,?,1,?,?,?,?)",
+                    (cab_id, typ["id"], item_name, typ["category"], note, who, ts, ts))
+                log(c, who, "添加", "%s %s 放入「%s」" % (cab["name"], cab["code"], item_name))
             c.commit()
             c.close()
         return self._send(200, get_state())
@@ -801,11 +807,9 @@ class Handler(BaseHTTPRequestHandler):
                 sets.append("type_id=?")
                 args.append(tid)
         if "qty" in b:
-            try:
-                sets.append("qty=?")
-                args.append(max(1, min(999, int(b["qty"]))))
-            except Exception:
-                pass
+            # 一种物品原则上只有一件：数量固定 1，不再支持多件
+            sets.append("qty=?")
+            args.append(1)
         if "note" in b:
             sets.append("note=?")
             args.append((b.get("note") or "").strip()[:120])
@@ -839,9 +843,9 @@ class Handler(BaseHTTPRequestHandler):
                     "WHERE i.type_id=? AND i.id<>?", (args[0], item_id)).fetchone()
                 if other:
                     c.close()
-                    return self._send(409, {"error": "「%s」已经在 %s %s 里（%d 件），一种物品只放一个柜子"
+                    return self._send(409, {"error": "「%s」已经在 %s %s 里，一种物品只放一个柜子"
                                                      % (row["tname"] or row["name"], other["rn"],
-                                                        other["code"], other["qty"])})
+                                                        other["code"])})
             c.execute("UPDATE items SET %s WHERE id=?" % ",".join(sets), args)
             log(c, who, "修改", "%s %s 的「%s」" % (row["rn"], row["code"], row["tname"] or row["name"]))
             c.commit()
@@ -858,8 +862,8 @@ class Handler(BaseHTTPRequestHandler):
                 c.close()
                 return self._send(404, {"error": "柜子里没有这件物品"})
             c.execute("DELETE FROM items WHERE id=?", (item_id,))
-            log(c, who, "取出", "%s %s 的「%s」×%d 已移出"
-                % (row["rn"], row["code"], row["tname"] or row["name"], row["qty"]))
+            log(c, who, "取出", "%s %s 的「%s」已移出"
+                % (row["rn"], row["code"], row["tname"] or row["name"]))
             c.commit()
             c.close()
         return self._send(200, get_state())
@@ -961,8 +965,8 @@ class Handler(BaseHTTPRequestHandler):
                 (cab_id,)).fetchall()
             for m in moved:
                 if m["type_id"]:
-                    c.execute("UPDATE types SET inuse=MIN(999, inuse+?) WHERE id=?",
-                              (m["q"], m["type_id"]))
+                    # 一件物品只有一件：记成在用（勾选），不叠加数量
+                    c.execute("UPDATE types SET inuse=1 WHERE id=?", (m["type_id"],))
             c.execute("DELETE FROM items WHERE cabinet_id=?", (cab_id,))
             c.execute("DELETE FROM cabinets WHERE id=?", (cab_id,))
             detail = "删除 %s %s 柜子" % (cab["rn"], cab["code"])

@@ -55,7 +55,7 @@ try:
     check("默认层两个房间", len(r3) == 2, s.get("rooms"))
     check("默认层共 10 个柜子", sum(len(r["cabinets"]) for r in r3) == 10)
     total = sum(c["count"] for r in s["rooms"] for c in r["cabinets"])
-    check("总件数 15（种子）", total == 15, total)
+    check("总件数 8（种子，一件一件）", total == 8, total)
     check("预置种类齐全", "被子" in s["categories"] and any(t["name"]=="冬被" for t in s["types"]), s["categories"])
     check("种类带 id", all("id" in c for c in s["cats"]))
 
@@ -74,15 +74,15 @@ try:
     item_id = got["items"][0]["id"]
     code, s3 = call("POST", "/api/items", {"cabinetId": empty["id"], "typeId": tid, "qty": 1, "who": "自测"})
     got = [c for r in s3["rooms"] for c in r["cabinets"] if c["id"] == empty["id"]][0]
-    check("同物品再放会合并数量", got["count"] == 2 and len(got["items"]) == 1, got["items"])
+    check("同物品再放不会叠加（一件只有一件）", got["count"] == 1 and len(got["items"]) == 1, got["items"])
 
     code, s4 = call("PATCH", "/api/items/%d" % item_id, {"qty": 5, "note": "三床", "who": "自测"})
     it = [i for r in s4["rooms"] for c in r["cabinets"] for i in c["items"] if i["id"] == item_id][0]
-    check("改数量+备注", it["qty"] == 5 and it["note"] == "三床", it)
+    check("数量固定 1 + 备注可改", it["qty"] == 1 and it["note"] == "三床", it)
     code, _ = call("PATCH", "/api/items/%d" % item_id, {"qty": 0, "who": "自测"})
     s5 = call("GET", "/api/state")[1]
     it = [i for r in s5["rooms"] for c in r["cabinets"] for i in c["items"] if i["id"] == item_id][0]
-    check("数量不会小于 1", it["qty"] == 1, it["qty"])
+    check("数量强制为 1", it["qty"] == 1, it["qty"])
     code, _ = call("DELETE", "/api/items/%d?who=%s" % (item_id, q("自测")))
     s6 = call("GET", "/api/state")[1]
     got = [c for r in s6["rooms"] for c in r["cabinets"] if c["id"] == empty["id"]][0]
@@ -99,7 +99,7 @@ try:
     check("改名+换分类", t["name"] == "自测被2" and t["category"] == "被套", t)
     code, s8u = call("PATCH", "/api/types/%d" % nid, {"inuse": 2, "who": "自测"})
     t = next(x for x in s8u["types"] if x["id"] == nid)
-    check("记录在用数量", code == 200 and t.get("inuse") == 2, t)
+    check("在用是勾选（传 2 也归一为 1）", code == 200 and t.get("inuse") == 1, t)
     code, _ = call("PATCH", "/api/types/%d" % nid, {"inuse": -5})
     t = next(x for x in call("GET", "/api/state")[1]["types"] if x["id"] == nid)
     check("在用数量不会小于 0", t["inuse"] == 0, t)

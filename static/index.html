@@ -225,7 +225,10 @@ header.top{
 .ins-line b{font-weight:700;overflow:hidden;text-overflow:ellipsis}
 .ins-line em{font-style:normal;opacity:.62;font-size:8.5px;margin-left:auto;padding-left:3px}
 .ins-more{font-size:8.5px;color:rgba(255,255,255,.62);text-align:right;padding-right:2px}
-.ins-empty{font-size:9.5px;color:rgba(255,246,230,.66);text-align:center;margin:auto}
+.ins-empty{font-size:9.5px;color:rgba(255,246,230,.72);text-align:center;margin:auto;
+  border:1.5px dashed rgba(255,246,230,.38);border-radius:9px;padding:7px 8px;
+  display:flex;flex-direction:column;align-items:center;gap:3px;line-height:1.2}
+.ins-empty .ic{font-size:15px;filter:grayscale(.2);opacity:.9}
 .cab:hover .ins-line{filter:saturate(106%) brightness(1.03)}
 
 /* 玻璃柜门：透明 + 斜向反光，能隔着门看到里面的东西；
@@ -436,6 +439,24 @@ body.fb .cabs{display:block}
 .res-main small{display:block;color:var(--muted);font-size:11.5px;margin-top:2px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .res-qty{font-size:12px;color:var(--muted);flex:0 0 auto}
+/* 搜索结果：种类色点 + 位置胶囊，跟明细页风格统一 */
+.res-card .catdot{width:10px;height:10px;border-radius:50%;flex:0 0 auto;box-shadow:0 0 0 3px rgba(0,0,0,.04)}
+.res-card .res-loc{display:inline-flex;align-items:center;gap:3px}
+.res-card .res-loc b{color:#3F6B5A}
+/* 「⋯」更多菜单 */
+.menu-row{display:flex;align-items:center;gap:11px;width:100%;background:#fff;border:1px solid #EAE2D2;
+  border-radius:13px;padding:13px 15px;margin-top:9px;font-size:14px;color:#4A4237;cursor:pointer;
+  font-family:inherit;text-align:left}
+.menu-row:active{background:var(--sage-soft)}
+.menu-row .ic{font-size:17px;flex:0 0 auto}
+.menu-row .grow{flex:1;min-width:0}
+.menu-row small{display:block;font-size:11px;color:#A2937B;margin-top:2px}
+.menu-row .arr{color:#C4BBA9;font-size:13px;flex:0 0 auto}
+.menu-row.danger{color:#B05A4A}
+/* 物品详情弹窗（只读视图） */
+.edview-name{font-size:17px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:8px;margin:2px 0 4px}
+.edview-name .catdot{width:11px;height:11px;border-radius:50%;flex:0 0 auto}
+.edview-meta{font-size:12.5px;color:#8E8271;line-height:1.5}
 
 /* ---------- 最近动态 ---------- */
 .activity{margin-top:30px}
@@ -617,12 +638,8 @@ body.fb .cabs{display:block}
       <input id="q" placeholder="找东西，如「冬被」" autocomplete="off">
       <button class="search-clear" id="qClear">✕</button>
     </div>
-    <button class="top-btn" id="refreshBtn" title="刷新数据">⟳ <span class="t">刷新</span></button>
+    <button class="top-btn" id="moreBtn" title="更多">⋯</button>
     <button class="top-btn" id="libBtn">🧺 <span class="t">物品库</span></button>
-    <button class="who-chip" id="whoBtn">
-      <span class="who-dot"></span>
-      <span class="t">我是</span> <b id="whoName">家人</b>
-    </button>
   </div>
 </header>
 <div class="wrap">
@@ -640,7 +657,7 @@ body.fb .cabs{display:block}
     <div class="logs" id="logs"></div>
   </div>
 
-  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1154</span></div>
+  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1155</span></div>
 </div>
 
 <div class="mask" id="mask"></div>
@@ -729,15 +746,6 @@ body.fb .cabs{display:block}
     <button class="icon-btn" id="libClose">✕</button>
   </div>
   <div class="sheet-body">
-    <div class="setting-block">
-      <h4>数据备份</h4>
-      <div class="form-row" style="margin-bottom:0">
-        <button class="top-btn" onclick="exportData()">导出备份</button>
-        <button class="top-btn" onclick="el('importFile').click()">导入备份</button>
-        <input type="file" id="importFile" accept="application/json,.json" style="display:none">
-      </div>
-      <div class="form-tip" style="text-align:left;margin-top:8px">导出会存成一个 JSON 文件；换手机、重装或数据被重置时，导入就能整份恢复</div>
-    </div>
     <div class="items" id="libList"></div>
   </div>
   <div class="form">
@@ -767,6 +775,46 @@ body.fb .cabs{display:block}
   </div>
 </div>
 
+<!-- 「⋯」更多菜单：刷新 / 我是谁 / 备份 -->
+<div class="mini-mask" id="moreMask">
+  <div class="mini-card">
+    <h4>更多</h4>
+    <button class="menu-row" id="menuRefresh"><span class="ic">⟳</span>
+      <span class="grow">刷新数据<b style="font-weight:400"></b></span><span class="arr">›</span></button>
+    <button class="menu-row" id="menuWho"><span class="ic">👤</span>
+      <span class="grow">我是谁<small>放东西、取东西时会记下名字 · 现在是「<b id="whoName">家人</b>」</small></span>
+      <span class="arr">›</span></button>
+    <button class="menu-row" id="menuExport"><span class="ic">📤</span>
+      <span class="grow">导出备份<small>存成一个 JSON 文件，换手机也能恢复</small></span>
+      <span class="arr">›</span></button>
+    <button class="menu-row" id="menuImport"><span class="ic">📥</span>
+      <span class="grow">导入备份<small>用之前导出的文件，覆盖恢复全部数据</small></span>
+      <span class="arr">›</span></button>
+    <input type="file" id="importFile" accept="application/json,.json" style="display:none">
+    <div class="row">
+      <button class="ghost" id="moreClose">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- 放回柜子：选一个柜子 -->
+<div class="mini-mask" id="pickMask">
+  <div class="mini-card">
+    <h4 id="pickTitle">放回哪个柜子？</h4>
+    <div id="pickList" style="max-height:320px;overflow:auto;margin-top:4px"></div>
+    <div class="row">
+      <button class="ghost" id="pickClose">先不放</button>
+    </div>
+  </div>
+</div>
+<style>
+.pick-row{display:flex;align-items:center;gap:10px;width:100%;background:#fff;border:1px solid #EAE2D2;
+  border-radius:12px;padding:11px 14px;margin-top:8px;font-family:inherit;text-align:left;cursor:pointer}
+.pick-row:active{background:var(--sage-soft)}
+.pick-row b{font-size:14px;color:var(--ink)}
+.pick-row span{font-size:11.5px;color:#A2937B;margin-left:auto}
+</style>
+
 <!-- 全部物品明细 -->
 <section class="sheet" id="allSheet" aria-hidden="true">
   <div class="sheet-grip"></div>
@@ -784,18 +832,24 @@ body.fb .cabs{display:block}
   <div class="sheet-body"><div id="allList"></div></div>
 </section>
 
-<!-- 改名 / 改数量 弹窗 -->
+<!-- 物品详情 / 修改 弹窗：点开先看，点「改名字」才进编辑 -->
 <div class="mini-mask" id="edMask">
   <div class="mini-card">
-    <h4 id="edTitle">改物品</h4>
-    <p id="edSub">改了名字，所有柜子里都跟着改</p>
-    <input class="field" id="edName" placeholder="物品名称，如 冬被" maxlength="40" style="width:100%">
-    <div class="chips" id="edCats" style="margin:11px 0 0"></div>
-    <input class="field" id="edTNote" placeholder="备注（点开这件物品就能看到）" maxlength="60" style="width:100%;display:none;margin-top:2px">
-    <div id="edItemNote" style="display:none;margin:6px 0 0;padding:9px 12px;background:#F6F2E9;border:1px solid #EAE2D2;border-radius:10px;font-size:12.5px;color:#6E6250;line-height:1.45">
-      <b style="font-size:11px;color:#8E8271">📝 备注</b><span id="edItemNoteTxt"></span>
-      <div style="font-size:10.5px;color:#A2937B;margin-top:2px">备注在「物品库」里改，柜子里只能看</div>
+    <h4 id="edTitle">物品</h4>
+    <p id="edSub"></p>
+    <div id="edView" style="display:none">
+      <div class="edview-name"><span class="catdot" id="edVDot"></span><span id="edVName"></span></div>
+      <div class="edview-meta" id="edVMeta"></div>
+      <div id="edItemNote" style="margin:8px 0 0;padding:9px 12px;background:#F6F2E9;border:1px solid #EAE2D2;border-radius:10px;font-size:12.5px;color:#6E6250;line-height:1.45">
+        <b style="font-size:11px;color:#8E8271">📝 备注</b><span id="edItemNoteTxt"></span>
+        <div style="font-size:10.5px;color:#A2937B;margin-top:2px">备注在「物品库」里改，柜子里只能看</div>
+      </div>
     </div>
+    <div id="edForm" style="display:none">
+      <input class="field" id="edName" placeholder="物品名称，如 冬被" maxlength="40" style="width:100%">
+      <div class="chips" id="edCats" style="margin:11px 0 0"></div>
+    </div>
+    <input class="field" id="edTNote" placeholder="备注（点开这件物品就能看到）" maxlength="60" style="width:100%;display:none;margin-top:2px">
     <div class="form-row" id="edUseRow" style="display:none;margin:10px 0 0;align-items:center">
       <span class="usebox" id="edUseBox" onclick="toggleEdUse()"><span class="box">✓</span></span>
       <div style="flex:1;font-size:12.5px;color:#6E6250;line-height:1.35">
@@ -805,6 +859,7 @@ body.fb .cabs{display:block}
     </div>
     <div class="row">
       <button class="ghost" id="edCancel">取消</button>
+      <button class="top-btn solid" id="edEditBtn" style="display:none">改名字</button>
       <button class="ok" id="edSave">保存</button>
     </div>
   </div>
@@ -813,7 +868,7 @@ body.fb .cabs{display:block}
 <div class="toast" id="toast"></div>
 
 <script>
-const VER = "v1154";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
+const VER = "v1155";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
 const BASE_COLOR = {"被子":"#9DC0AD","床单":"#E3C878","被套":"#DDA077","枕头":"#A9BEDB","毛毯":"#CFA6C0","其他":"#C3B9AA"};
 const PALETTE = ["#8FB0A8","#D9B36C","#B3A0C9","#C7A98B","#94AEBB","#D6A0A0","#A8B98E"];
 /* 种类来自后端，可以自己加，颜色按顺序分配 */
@@ -903,11 +958,9 @@ function noteOf(it){
   const t = (it && it.type_id) ? (state.types || []).find(x=>x.id === it.type_id) : null;
   return (t && t.note) ? t.note : ((it && it.note) || "");
 }
-/* 柜外件数：没放进柜子、但在家里的存货。
-   填了「在用」就按在用算；没填也没进柜子，默认算 1 件（物品库里列了就说明家里有） */
+/* 柜外件数：物品原则上只有一件 —— 在用算柜外 1 件；没进柜子也没在用，也算家里有 1 件 */
 function outsideOf(t){
-  const use = t.inuse || 0;
-  if(use > 0) return use;
+  if((t.inuse || 0) > 0) return 1;
   return placeOf(t) ? 0 : 1;
 }
 /* 每层柜内累计 / 柜外累计 */
@@ -1131,9 +1184,9 @@ function cabHTML(room, cab, U, K, GP){
   const shown = items.slice(0, maxShown);
   const inner = items.length
     ? shown.map(i=>`<div class="ins-line" style="background:${catColor(i.category)}E6">
-         <b>${esc(i.name)}</b><em>×${i.qty}</em></div>`).join("")
+         <b>${esc(i.name)}</b></div>`).join("")
       + (items.length > shown.length ? `<div class="ins-more">还有 ${items.length-shown.length} 种…</div>` : "")
-    : `<div class="ins-empty">空柜子</div>`;
+    : `<div class="ins-empty"><span class="ic">🧺</span>空柜子</div>`;
   /* 小柜底部明细与大柜完全同款（同格式同字号），窄卡里自然省略号截断 */
   const foot = items.length
     ? `<b>${cab.count}</b> 件 · ${items.map(i=>esc(i.name)).slice(0,4).join("、")}${items.length>4?"…":""}`
@@ -1265,7 +1318,7 @@ function renderTypeChips(){
     if(pl){
       return `<button class="chip used other" onclick="usedHint(${t.id})">${esc(t.name)} · 在${esc(pl.code)}</button>`;
     }
-    return `<button class="chip" onclick="putItem(${t.id})">${esc(t.name)}${t.inuse?`<i style="font-style:normal;font-size:10.5px;opacity:.6;margin-left:3px">在用${t.inuse}</i>`:""}</button>`;
+    return `<button class="chip" onclick="putItem(${t.id})">${esc(t.name)}${t.inuse?`<i style="font-style:normal;font-size:10.5px;opacity:.6;margin-left:3px">在用</i>`:""}</button>`;
   }).join("");
 }
 
@@ -1278,17 +1331,16 @@ async function quickAdd(){
   putting = true;
   try{
     state = await api("POST","/api/items",{cabinetId: currentCab, name: name, category: cat, qty: 1, note: "", who});
-    /* 新物品如果物品库里已有同名条目、且它有「在用」，收进柜子就少一件在用 */
+    /* 新物品如果物品库里同名条目勾了「在用」，收进柜子就取消在用（一件东西只有一个去处） */
     const t = (state.types || []).find(x=>x.name===name && (x.floor||"F3")===curFloor);
-    let left = t ? (t.inuse || 0) : 0;
-    if(left > 0){
-      state = await api("PATCH","/api/types/"+t.id,{inuse: left - 1, who});
-      left -= 1;
+    let wasUse = !!(t && (t.inuse||0));
+    if(wasUse){
+      state = await api("PATCH","/api/types/"+t.id,{inuse: 0, who});
     }
     el("qaName").value = "";
     render();
     const code = (findCab(currentCab) || {}).cab ? findCab(currentCab).cab.code : "";
-    toast("「" + name + "」已放进 " + code + " ✓（1 件）" + (left > 0 ? "，在用还剩 " + left + " 件" : ""));
+    toast("「" + name + "」已放进 " + code + " ✓" + (wasUse ? "，不在用了" : ""));
   }catch(e){ toast(e.message || "放不进去"); }
   finally{ putting = false; }
 }
@@ -1297,7 +1349,7 @@ function usedHint(typeId){
   const t = (state.types || []).find(x=>x.id===typeId);
   const pl = placeOf(t);
   if(!pl) return;
-  toast(`「${t.name}」本层已经在 ${pl.room} ${pl.code} 里（${pl.qty} 件）。同层一件物品只放一个柜子，想挪先在那里取出`);
+  toast(`「${t.name}」本层已经在 ${pl.room} ${pl.code} 里。同层一件物品只放一个柜子，想挪先在那里取出`);
 }
 
 /* 点一下＝直接放 1 件 */
@@ -1312,15 +1364,14 @@ async function putItem(typeId){
   putting = true;
   try{
     state = await api("POST","/api/items",{cabinetId: currentCab, typeId, qty: 1, note: "", who});
-    /* 这件原来有「使用中」的，收进柜子就等于少一件在用 */
-    let left = t ? (t.inuse || 0) : 0;
-    if(left > 0){
-      state = await api("PATCH","/api/types/"+typeId,{inuse: left - 1, who});
-      left -= 1;
+    /* 这件原来勾了「在用」，收进柜子就取消在用 */
+    let wasUse = !!(t && (t.inuse||0));
+    if(wasUse){
+      state = await api("PATCH","/api/types/"+typeId,{inuse: 0, who});
     }
     render();
     const code = (findCab(currentCab) || {}).cab ? findCab(currentCab).cab.code : "";
-    toast("已放进 " + code + " ✓（1 件）" + (left > 0 ? "，在用还剩 " + left + " 件" : (t && t.inuse ? "，这件不在用了" : "")));
+    toast("已放进 " + code + " ✓" + (wasUse ? "，不在用了" : ""));
   }catch(e){ toast(e.message || "放不进去"); }
   finally{ putting = false; }
 }
@@ -1328,44 +1379,33 @@ async function putItem(typeId){
 el("mask").onclick = ()=>{ closeSheet(); closeLib(); closeAll(); };
 el("shClose").onclick = closeSheet;
 
-async function bumpQty(id, delta){
-  const hit = findItem(id); if(!hit) return;
-  const next = hit.item.qty + delta;
-  if(next < 1){ return removeItem(id); }
-  try{
-    state = await api("PATCH","/api/items/"+id,{qty:next, who});
-    render();
-  }catch(e){ toast(e.message || "修改失败"); }
-}
+/* 一种物品原则上只有一件：不再有加减数量，取出/放入即可 */
 
 async function removeItem(id){
   const hit = findItem(id);
   const name = hit ? hit.item.name : "这件东西";
   const tid = hit ? hit.item.type_id : 0;
-  const outQty = hit ? (hit.item.qty || 1) : 1;
   const t = tid ? (state.types || []).find(x=>x.id === tid) : null;
+  if(!confirm(`把「${name}」从柜子里取出来？取出后会记成「在外面用」，随时可以再放回别的柜子`)) return;
   try{
     await api("DELETE","/api/items/"+id+"?who="+encodeURIComponent(who||"家人"));
     state = await api("GET","/api/state");
-    /* 从柜子拿出来＝还在家里用着，记成「在用」，总数不会凭空少掉 */
-    let extra = "";
+    /* 从柜子拿出来＝还在家里用着，记成「在用」，东西不会凭空少掉 */
     if(t){
-      const next = Math.min(999, (t.inuse || 0) + outQty);
-      state = await api("PATCH","/api/types/"+tid,{inuse: next, who});
-      extra = `，${next} 件记为在用`;
+      state = await api("PATCH","/api/types/"+tid,{inuse: 1, who});
     }
-    render(); toast(`「${name}」已取出${extra}，想收起来点物品名再放回去`);
+    render(); toast(`「${name}」已取出，记为在外面用；想收进柜子去明细里点「放回柜子」`);
   }catch(e){ toast(e.message || "取出失败"); }
 }
 
-/* ---------- 改名字 / 数量 / 备注（弹窗，不再用浏览器 prompt） ---------- */
+/* ---------- 物品详情（先看） / 改名（点「改名字」才进编辑） ---------- */
 let edCtx = null;
 function openItemEdit(id){
   const hit = findItem(id); if(!hit) return;
   const it = hit.item;
   edCtx = {kind:"item", itemId:it.id, typeId:it.type_id, cabId:it.cabinet_id,
            name:it.name, cat:it.category, note:it.note || ""};
-  drawEdit("改这件物品", "柜子里只改名字；备注和「在用」去右上角「物品库」改");
+  drawEdit("这件物品", "看看它在哪儿、有什么备注；要改名点下面的「改名字」");
 }
 function openTypeEdit(id){
   const t = (state.types||[]).find(x=>x.id===id); if(!t) return;
@@ -1375,20 +1415,47 @@ function openTypeEdit(id){
 function drawEdit(title, sub){
   el("edTitle").textContent = title;
   el("edSub").textContent = sub;
-  el("edName").value = edCtx.name || "";
   const isType = edCtx.kind === "type";
+  const isItem = !isType;
+  el("edView").style.display = isItem ? "" : "none";
+  el("edForm").style.display = isType ? "" : "none";
   el("edTNote").style.display = isType ? "" : "none";
-  if(isType) el("edTNote").value = edCtx.note || "";
-  const isItem = edCtx.kind === "item";
-  el("edItemNote").style.display = isItem ? "" : "none";
+  if(isType){
+    el("edTNote").value = edCtx.note || "";
+    el("edName").value = edCtx.name || "";
+    el("edUseRow").style.display = "flex";
+    drawEdUse();
+  }else{
+    el("edUseRow").style.display = "none";
+  }
   if(isItem){
+    /* 只读详情：名字、种类、位置、备注，不弹键盘 */
+    const t = (state.types||[]).find(x=>x.id===edCtx.typeId);
+    el("edVDot").style.background = catColor(edCtx.cat || "其他");
+    el("edVName").textContent = edCtx.name || "";
+    const hit = findItem(edCtx.itemId);
+    const where = hit ? "放在 " + hit.room.name + " " + hit.cab.code : "";
+    el("edVMeta").textContent = [edCtx.cat || "其他", where, (t && (t.inuse||0)) ? "在外面用着" : ""]
+      .filter(Boolean).join(" · ");
     const note = noteOf({type_id: edCtx.typeId, note: edCtx.note});
     el("edItemNoteTxt").textContent = note ? " " + note : " 还没写";
   }
-  el("edUseRow").style.display = isType ? "flex" : "none";
-  if(isType) drawEdUse();
+  el("edEditBtn").style.display = isItem ? "" : "none";
+  el("edSave").style.display = isItem ? "none" : "";
+  el("edCancel").textContent = isItem ? "关闭" : "取消";
   drawEdCats();
   el("edMask").classList.add("on");
+  /* 不自动聚焦：不打断、不弹键盘；要点「改名字」才进编辑态 */
+}
+/* 点了「改名字」才切到编辑态，这时候才弹输入法 */
+function startEditName(){
+  if(!edCtx) return;
+  el("edView").style.display = "none";
+  el("edForm").style.display = "";
+  el("edName").value = edCtx.name || "";
+  el("edSave").style.display = "";
+  el("edEditBtn").style.display = "none";
+  el("edCancel").textContent = "取消";
   setTimeout(()=>el("edName").focus(), 120);
 }
 function drawEdUse(){
@@ -1454,6 +1521,7 @@ async function saveEdit(){
   finally{ btn.disabled = false; }
 }
 el("edCancel").onclick = closeEdit;
+el("edEditBtn").onclick = startEditName;
 el("edSave").onclick = saveEdit;
 el("edMask").addEventListener("click", e=>{ if(e.target === el("edMask")) closeEdit(); });
 el("edName").addEventListener("keydown", e=>{ if(e.key==="Enter") saveEdit(); });
@@ -1530,10 +1598,11 @@ function renderLib(){
     <div class="lib-row">
       <span class="cat" style="width:9px;height:9px;border-radius:50%;background:${catColor(t.category)};flex:0 0 auto"></span>
       <div class="body" onclick="openTypeEdit(${t.id})" title="点开可看/改备注">
-        <b>${esc(t.name)}${t.inuse?" <em style='font-style:normal;font-size:10.5px;color:#8A6A3B;background:#FBF0D9;border:1px solid #EBD9AE;border-radius:999px;padding:1px 6px;margin-left:4px'>在用 "+t.inuse+"</em>":""}${t.note?" <em style='font-style:normal;font-size:10.5px;color:#7C8B9E;background:#EDF1F6;border:1px solid #D9E1EB;border-radius:999px;padding:1px 6px;margin-left:4px'>📝 有备注</em>":""}</b>
-        <small>${esc(t.category)} · ${placeOf(t) ? "在 "+esc(placeOf(t).room)+" "+esc(placeOf(t).code)+"（"+placeOf(t).qty+" 件）" : curFloor+" 还没放进柜子（柜外 "+outsideOf(t)+" 件）"}${t.inuse?" · 使用中 "+t.inuse+" 件":""}${t.note?" · "+esc(t.note):""}</small>
+        <b>${esc(t.name)}${t.inuse?" <em style='font-style:normal;font-size:10.5px;color:#8A6A3B;background:#FBF0D9;border:1px solid #EBD9AE;border-radius:999px;padding:1px 6px;margin-left:4px'>在用</em>":""}${t.note?" <em style='font-style:normal;font-size:10.5px;color:#7C8B9E;background:#EDF1F6;border:1px solid #D9E1EB;border-radius:999px;padding:1px 6px;margin-left:4px'>📝 有备注</em>":""}</b>
+        <small>${esc(t.category)} · ${placeOf(t) ? "在 "+esc(placeOf(t).room)+" "+esc(placeOf(t).code) : (t.inuse ? curFloor+" 在外面用着" : curFloor+" 还没放进柜子")}${t.note?" · "+esc(t.note):""}</small>
       </div>
-      <button class="mini-edit" onclick="openTypeEdit(${t.id})" title="改名/换分类/改在用数量">✎</button>
+      ${!placeOf(t) ? `<button class="mini-edit" style="width:auto;padding:0 9px;border-radius:999px;font-size:11px" onclick="putBackPick(${t.id},event)" title="放进柜子">放回柜子</button>` : ""}
+      <button class="mini-edit" onclick="openTypeEdit(${t.id})" title="改名/换分类/在用">✎</button>
       <button class="del" onclick="delType(${t.id})" title="删除">🗑</button>
     </div>`).join("") : `<div class="empty-state"><span class="big">📦</span>物品库是空的</div>`;
   renderCatChips();
@@ -1585,18 +1654,56 @@ el("catAddBtn").onclick = addCat;
 el("newCatName").addEventListener("keydown", e=>{ if(e.key==="Enter") addCat(); });
 el("libBtn").onclick = openLib;
 
-/* ---------- 刷新 / 备份 ---------- */
-el("refreshBtn").onclick = async function(){
-  const b = el("refreshBtn"); if(b.disabled) return;
-  b.disabled = true;
+/* ---------- 放回柜子：选一个柜子收进去 ---------- */
+let pickCtx = null;
+function putBackPick(id, ev){
+  if(ev) ev.stopPropagation();
+  const t = (state.types || []).find(x=>x.id===id);
+  if(!t) return;
+  pickCtx = id;
+  el("pickTitle").textContent = "把「" + t.name + "」放回哪个柜子？";
+  const cabs = [];
+  roomsNow().forEach(r=>r.cabinets.forEach(c=>cabs.push({r, c})));
+  el("pickList").innerHTML = cabs.length ? cabs.map(({r,c})=>`
+    <button class="pick-row" onclick="putBackTo(${c.id})">
+      <b>${esc(r.name)} ${esc(c.code)}</b>${c.name?`<b style="font-weight:400;color:#8E8271">${esc(c.name)}</b>`:""}
+      <span>${c.count ? c.count + " 件" : "空的"}</span>
+    </button>`).join("") : `<div class="empty-state"><span class="big">📦</span>这层还没有柜子</div>`;
+  el("pickMask").classList.add("on");
+}
+async function putBackTo(cabId){
+  const id = pickCtx;
+  el("pickMask").classList.remove("on"); pickCtx = null;
+  if(!id) return;
+  const t = (state.types || []).find(x=>x.id===id);
+  try{
+    state = await api("POST","/api/items",{cabinetId: cabId, typeId: id, qty: 1, note: "", who});
+    if(t && (t.inuse||0)){ state = await api("PATCH","/api/types/"+id,{inuse: 0, who}); }
+    render();
+    const hit = findCab(cabId);
+    toast("「" + (t?t.name:"") + "」已放进 " + (hit ? hit.room.name + " " + hit.cab.code : "柜子") + " ✓");
+  }catch(e){ toast(e.message || "放不进去"); }
+}
+el("pickClose").onclick = ()=>{ el("pickMask").classList.remove("on"); pickCtx = null; };
+el("pickMask").addEventListener("click", e=>{ if(e.target === el("pickMask")){ el("pickMask").classList.remove("on"); pickCtx = null; } });
+
+/* ---------- 「⋯」更多菜单：刷新 / 我是谁 / 备份 ---------- */
+async function refreshData(){
   try{
     state = await api("GET","/api/state");
     lastSig = JSON.stringify(state); lastSyncAt = Date.now();
     render();
     toast("已刷新 · " + new Date().toLocaleTimeString("zh-CN",{hour:"2-digit",minute:"2-digit"}));
   }catch(e){ toast("刷新失败，检查下网络"); }
-  finally{ b.disabled = false; }
-};
+}
+function closeMore(){ el("moreMask").classList.remove("on"); }
+el("moreBtn").onclick = ()=>{ el("moreMask").classList.add("on"); };
+el("moreClose").onclick = closeMore;
+el("moreMask").addEventListener("click", e=>{ if(e.target === el("moreMask")) closeMore(); });
+el("menuRefresh").onclick = async ()=>{ closeMore(); await refreshData(); };
+el("menuWho").onclick = ()=>{ closeMore(); askWho(); };
+el("menuExport").onclick = ()=>{ closeMore(); exportData(); };
+el("menuImport").onclick = ()=>{ closeMore(); el("importFile").click(); };
 
 async function exportData(){
   try{
@@ -1696,9 +1803,10 @@ function renderAll(){
         <span class="catdot" style="background:${catColor(t.category)}"></span>
         <div class="body" onclick="openTypeEdit(${t.id})"><b>${esc(t.name)}</b>
           <small>${esc(t.category)}${t.note?" · 📝 "+esc(t.note):""} · ${(t.inuse||0) > 0
-            ? "在外面用着 "+t.inuse+" 件，收进柜子就取消勾选"
+            ? "在外面用着，收进柜子就取消勾选"
             : (placeOf(t) ? "在 "+esc(placeOf(t).room)+" "+esc(placeOf(t).code)
-              : "还没放进柜子 · 按 1 件算")}</small></div>
+              : "还没放进柜子")}</small></div>
+        ${!placeOf(t) ? `<button class="takeout" style="background:#EDF3EF;color:#3F6B5A" onclick="putBackPick(${t.id},event)">放回柜子</button>` : ""}
         <span class="usebox ${(t.inuse||0)>0?"on":""}" onclick="toggleUse(${t.id},event)"
           title="勾上＝在外面用；不勾＝看在哪个柜子"><span class="box">✓</span><i>在用</i></span>
       </div>`).join("")}
@@ -1720,7 +1828,7 @@ async function toggleUse(id, ev){
     state = await api("PATCH","/api/types/"+id,{inuse: next, who});
     render();
     toast(next ? `「${t.name}」已勾选在用：从柜子里取出来，记为在外面用`
-               : `「${t.name}」已取消在用${placeOf(t) ? "，现在在 "+placeOf(t).room+" "+placeOf(t).code : "，现在还不在柜子里"}`);
+               : `「${t.name}」已取消在用${placeOf(t) ? "，现在在 "+placeOf(t).room+" "+placeOf(t).code : "，点「放回柜子」把它收好"}`);
   }catch(e){ toast(e.message || "改不了，稍后再试"); }
 }
 el("allClose").onclick = closeAll;
@@ -1745,9 +1853,9 @@ async function doSearch(q){
   box.classList.add("on");
   box.innerHTML = rows.length ? rows.map(r=>`
     <button class="res-card" onclick="openCab(${r.cabinet_id})">
-      <span class="res-loc">${esc(r.room_name)} ${esc(r.code)}</span>
+      <span class="catdot" style="background:${catColor(r.category)}"></span>
       <div class="res-main"><b>${esc(r.name)}</b><small>${esc(r.category)}${r.note?" · "+esc(r.note):""}</small></div>
-      <span class="res-qty">×${r.qty}</span>
+      <span class="res-loc">在 <b>${esc(r.room_name)} ${esc(r.code)}</b> ›</span>
     </button>`).join("") : `<div class="empty-state"><span class="big">🔍</span>没找到「${esc(q)}」，换个词试试</div>`;
 }
 
@@ -1755,9 +1863,9 @@ async function doSearch(q){
 function askWho(){
   el("whoInput").value = who || "";
   el("whoMask").classList.add("on");
+  /* 用户主动点了「我是谁」要填名字，这里才弹输入法 */
   setTimeout(()=>el("whoInput").focus(), 120);
 }
-el("whoBtn").onclick = askWho;
 el("whoCancel").onclick = ()=>el("whoMask").classList.remove("on");
 el("whoSave").onclick = ()=>{
   const v = el("whoInput").value.trim().slice(0,10);
