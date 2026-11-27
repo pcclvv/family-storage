@@ -633,7 +633,7 @@ body.fb .cabs{display:block}
     <div class="logs" id="logs"></div>
   </div>
 
-  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1149</span></div>
+  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1150</span></div>
 </div>
 
 <div class="mask" id="mask"></div>
@@ -701,15 +701,13 @@ body.fb .cabs{display:block}
   <div class="form" id="addForm">
     <div class="form-label" id="addFormLabel">点一下，直接放进这个柜子（1 件）</div>
     <div class="chips wrap" id="typeChips"></div>
-    <div class="form-label" style="margin-top:4px">或者手动填：物品名字 + 下拉选类型</div>
-    <div class="form-row" style="margin-bottom:6px">
-      <input class="field" id="qaName" placeholder="物品名字（不填就用类型名）" maxlength="40">
-    </div>
+    <div class="form-label" style="margin-top:4px">或者手动填：物品名字 + 下拉选种类</div>
     <div class="form-row" style="margin-bottom:4px">
-      <select class="field" id="qaType"></select>
-      <button class="top-btn solid" id="qaAddBtn" onclick="quickAdd()">放入</button>
+      <input class="field" id="qaName" placeholder="物品名字，如 冬被" maxlength="40">
+      <select class="field" id="qaCat" style="flex:0 0 92px;padding:12px 8px;font-size:13px"></select>
+      <button class="top-btn solid" id="qaAddBtn" onclick="quickAdd()" style="flex:0 0 auto;padding:12px 16px;border-radius:13px">放入</button>
     </div>
-    <div class="form-tip" style="text-align:left">类型都在「物品库」里维护，柜子这里只做选择；标 ✓ 的已经在这个柜子里了，选它会再 ＋1 件</div>
+    <div class="form-tip" style="text-align:left">种类在「物品库」里维护，柜子这里只做选择；填过的物品名会直接归到对应类型</div>
   </div>
 </section>
 
@@ -808,7 +806,7 @@ body.fb .cabs{display:block}
 <div class="toast" id="toast"></div>
 
 <script>
-const VER = "v1149";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
+const VER = "v1150";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
 const BASE_COLOR = {"被子":"#9DC0AD","床单":"#E3C878","被套":"#DDA077","枕头":"#A9BEDB","毛毯":"#CFA6C0","其他":"#C3B9AA"};
 const PALETTE = ["#8FB0A8","#D9B36C","#B3A0C9","#C7A98B","#94AEBB","#D6A0A0","#A8B98E"];
 /* 种类来自后端，可以自己加，颜色按顺序分配 */
@@ -1232,15 +1230,12 @@ function renderTypeChips(){
   const types = typesNow().slice().sort((a,b)=>a.name.localeCompare(b.name,"zh-Hans-CN"));
   if(el("addFormLabel")) el("addFormLabel").textContent =
     `点一下，直接放进这个柜子（1 件）· 只用 ${curFloor} 的物品库`;
-  /* 底部手动新增的下拉：类型只在物品库维护，这里只选 */
-  const sel = el("qaType");
-  if(sel){
-    const hit0 = findCab(currentCab);
-    const inCab0 = new Set(hit0 ? hit0.cab.items.map(i=>i.type_id) : []);
-    sel.innerHTML = types.length
-      ? '<option value="">── 选一个类型 ──</option>' +
-        types.map(t=>`<option value="${t.id}">${esc(t.name)}${inCab0.has(t.id) ? "（本柜已有）" : ""}</option>`).join("")
-      : `<option value="">${curFloor} 的物品库还没有类型</option>`;
+  /* 底部手动新增的下拉：种类（被子/枕头/床单…）只在物品库维护，这里只选 */
+  const selC = el("qaCat");
+  if(selC){
+    const list = cats();
+    selC.innerHTML = list.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join("");
+    selC.value = list.includes("被子") ? "被子" : list[0];
   }
   if(!types.length){
     el("typeChips").innerHTML = `<span class="chip" style="cursor:default">${curFloor} 的物品库还空着，点右上角「物品库」加一种</span>`;
@@ -1262,32 +1257,26 @@ function renderTypeChips(){
   }).join("");
 }
 
-/* 柜子底部手动新增：输入名字（可留空）+ 下拉选类型 → 直接放入 */
+/* 柜子底部手动新增：填物品名字 + 下拉选种类（被子/枕头/床单…）→ 直接放入 */
 async function quickAdd(){
   if(!currentCab || putting) return;
-  const sel = el("qaType");
-  const tid = parseInt(sel.value, 10);
   const name = el("qaName").value.trim();
-  if(!tid){
-    toast(sel.options.length <= 1 ? "先去「物品库」加一个类型" : "先在下面选一个类型");
-    return;
-  }
-  const t = (state.types || []).find(x=>x.id===tid);
+  const cat = el("qaCat").value || "被子";
+  if(!name){ toast("先填物品名字"); el("qaName").focus(); return; }
   putting = true;
   try{
-    state = await api("POST","/api/items",{cabinetId: currentCab, typeId: tid, name: name, qty: 1, note: "", who});
-    /* 这件原来有「使用中」的，收进柜子就等于少一件在用 */
+    state = await api("POST","/api/items",{cabinetId: currentCab, name: name, category: cat, qty: 1, note: "", who});
+    /* 新物品如果物品库里已有同名条目、且它有「在用」，收进柜子就少一件在用 */
+    const t = (state.types || []).find(x=>x.name===name && (x.floor||"F3")===curFloor);
     let left = t ? (t.inuse || 0) : 0;
     if(left > 0){
-      state = await api("PATCH","/api/types/"+tid,{inuse: left - 1, who});
+      state = await api("PATCH","/api/types/"+t.id,{inuse: left - 1, who});
       left -= 1;
     }
     el("qaName").value = "";
-    sel.selectedIndex = 0;
     render();
     const code = (findCab(currentCab) || {}).cab ? findCab(currentCab).cab.code : "";
-    const shown = name || (t ? t.name : "物品");
-    toast("「" + shown + "」已放进 " + code + " ✓（1 件）" + (left > 0 ? "，在用还剩 " + left + " 件" : ""));
+    toast("「" + name + "」已放进 " + code + " ✓（1 件）" + (left > 0 ? "，在用还剩 " + left + " 件" : ""));
   }catch(e){ toast(e.message || "放不进去"); }
   finally{ putting = false; }
 }

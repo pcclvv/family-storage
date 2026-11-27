@@ -25,7 +25,7 @@ CATEGORIES = ["被子", "床单", "被套", "枕头", "毛毯", "其他"]   # �
 ROOM_PREFIX = ["A", "B", "C", "D", "E", "F", "G", "H"]
 FLOORS = ["F2", "F3", "F4"]     # 楼层：每层房间与柜子结构相同，柜内物品各自独立
 DEFAULT_FLOOR = "F3"            # 首页默认进 F3
-PAGE_VER = "v1149"   # 页面版本号，前端拿它对比，不一致就强制重载（防手机缓存旧页面）
+PAGE_VER = "v1150"   # 页面版本号，前端拿它对比，不一致就强制重载（防手机缓存旧页面）
 _db_lock = threading.Lock()
 
 
@@ -727,7 +727,7 @@ class Handler(BaseHTTPRequestHandler):
                 typ = c.execute("SELECT * FROM types WHERE name=? AND COALESCE(NULLIF(floor,''),'F3')=?",
                                 (name, cab_floor)).fetchone()
                 if not typ:
-                    cat = b.get("category") if b.get("category") in CATEGORIES else "其他"
+                    cat = ensure_cat(c, (b.get("category") or "").strip()[:10])
                     c.execute("INSERT INTO types(name, category, sort, floor) VALUES(?,?,0,?)",
                               (name, cat, cab_floor))
                     typ = c.execute("SELECT * FROM types WHERE id=last_insert_rowid()").fetchone()
