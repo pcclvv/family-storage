@@ -640,7 +640,7 @@ body.fb .cabs{display:block}
     <div class="logs" id="logs"></div>
   </div>
 
-  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1151</span></div>
+  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1152</span></div>
 </div>
 
 <div class="mask" id="mask"></div>
@@ -792,9 +792,9 @@ body.fb .cabs{display:block}
     <input class="field" id="edName" placeholder="物品名称，如 冬被" maxlength="40" style="width:100%">
     <div class="chips" id="edCats" style="margin:11px 0 0"></div>
     <input class="field" id="edTNote" placeholder="备注（点开这件物品就能看到）" maxlength="60" style="width:100%;display:none;margin-top:2px">
-    <div class="form-row" id="edQtyRow" style="margin:2px 0 0">
-      <input class="field small" id="edQty" type="number" min="1" max="999" inputmode="numeric">
-      <input class="field" id="edNote" placeholder="备注（可留空）" maxlength="40">
+    <div id="edItemNote" style="display:none;margin:6px 0 0;padding:9px 12px;background:#F6F2E9;border:1px solid #EAE2D2;border-radius:10px;font-size:12.5px;color:#6E6250;line-height:1.45">
+      <b style="font-size:11px;color:#8E8271">📝 备注</b><span id="edItemNoteTxt"></span>
+      <div style="font-size:10.5px;color:#A2937B;margin-top:2px">备注在「物品库」里改，柜子里只能看</div>
     </div>
     <div class="form-row" id="edUseRow" style="display:none;margin:10px 0 0;align-items:center">
       <span class="usebox" id="edUseBox" onclick="toggleEdUse()"><span class="box">✓</span></span>
@@ -813,7 +813,7 @@ body.fb .cabs{display:block}
 <div class="toast" id="toast"></div>
 
 <script>
-const VER = "v1151";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
+const VER = "v1152";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
 const BASE_COLOR = {"被子":"#9DC0AD","床单":"#E3C878","被套":"#DDA077","枕头":"#A9BEDB","毛毯":"#CFA6C0","其他":"#C3B9AA"};
 const PALETTE = ["#8FB0A8","#D9B36C","#B3A0C9","#C7A98B","#94AEBB","#D6A0A0","#A8B98E"];
 /* 种类来自后端，可以自己加，颜色按顺序分配 */
@@ -897,6 +897,11 @@ function placeOf(t){
   if(!t) return null;
   if(t.places) return t.places[curFloor] || null;
   return t.place || null;
+}
+/* 物品的备注：统一存在「物品库」里（跟名字一样一处改、处处变） */
+function noteOf(it){
+  const t = (it && it.type_id) ? (state.types || []).find(x=>x.id === it.type_id) : null;
+  return (t && t.note) ? t.note : ((it && it.note) || "");
 }
 /* 柜外件数：没放进柜子、但在家里的存货。
    填了「在用」就按在用算；没填也没进柜子，默认算 1 件（物品库里列了就说明家里有） */
@@ -1220,9 +1225,9 @@ function refreshSheet(){
       <span class="cat" style="background:${catColor(i.category)}"></span>
       <div class="body" onclick="openItemEdit(${i.id})">
         <b>${esc(i.name)}</b>
-        <small>${esc(i.category)}${i.note?" · "+esc(i.note):""}${i.who?" · "+esc(i.who)+"放的":""}</small>
+        <small>${esc(i.category)}${noteOf(i)?" · 📝 "+esc(noteOf(i)):""}${i.who?" · "+esc(i.who)+"放的":""}</small>
       </div>
-      <button class="mini-edit" onclick="openItemEdit(${i.id})" title="改名字/数量/备注">✎</button>
+      <button class="mini-edit" onclick="openItemEdit(${i.id})" title="改名字 · 看备注">✎</button>
       <button class="takeout" onclick="removeItem(${i.id})">取出</button>
     </div>`).join("")
     : `<div class="empty-state"><span class="big">🧺</span>这个柜子还空着<br>在下面从物品库选一件放进来</div>`;
@@ -1359,26 +1364,27 @@ function openItemEdit(id){
   const hit = findItem(id); if(!hit) return;
   const it = hit.item;
   edCtx = {kind:"item", itemId:it.id, typeId:it.type_id, cabId:it.cabinet_id,
-           name:it.name, cat:it.category, qty:it.qty, note:it.note || ""};
-  drawEdit("改这件物品", "改名字后，所有柜子里同名物品都跟着改", true);
+           name:it.name, cat:it.category, note:it.note || ""};
+  drawEdit("改这件物品", "柜子里只改名字；备注和「在用」去右上角「物品库」改");
 }
 function openTypeEdit(id){
   const t = (state.types||[]).find(x=>x.id===id); if(!t) return;
   edCtx = {kind:"type", typeId:t.id, name:t.name, cat:t.category, inuse:t.inuse||0, note:t.note||""};
-  drawEdit("修改物品库", "勾「在外面用」＝没放进柜子、家里正在用；备注写在这里，点开就能看", false);
+  drawEdit("修改物品库", "勾「在外面用」＝没放进柜子、家里正在用；备注写在这里，点开就能看");
 }
-function drawEdit(title, sub, withQty){
+function drawEdit(title, sub){
   el("edTitle").textContent = title;
   el("edSub").textContent = sub;
   el("edName").value = edCtx.name || "";
-  el("edQtyRow").style.display = withQty ? "" : "none";
-  if(withQty){
-    el("edQty").value = edCtx.qty || 1;
-    el("edNote").value = edCtx.note || "";
-  }
   const isType = edCtx.kind === "type";
   el("edTNote").style.display = isType ? "" : "none";
   if(isType) el("edTNote").value = edCtx.note || "";
+  const isItem = edCtx.kind === "item";
+  el("edItemNote").style.display = isItem ? "" : "none";
+  if(isItem){
+    const note = noteOf({type_id: edCtx.typeId, note: edCtx.note});
+    el("edItemNoteTxt").textContent = note ? " " + note : " 还没写";
+  }
   el("edUseRow").style.display = isType ? "flex" : "none";
   if(isType) drawEdUse();
   drawEdCats();
@@ -1435,11 +1441,10 @@ async function saveEdit(){
         const created = (state.types||[]).find(x=>x.name === name && (x.floor||"F3") === fl);
         typeId = created ? created.id : 0;
       }
-      const qty = Math.max(1, Math.min(999, parseInt(el("edQty").value||"1",10) || 1));
-      const note = el("edNote").value.trim();
-      const body = {qty, note, who};
-      if(typeId) body.typeId = typeId;
-      state = await api("PATCH","/api/items/"+edCtx.itemId, body);
+      /* 柜子里只改名字；数量/备注都不在这里动 */
+      if(typeId !== edCtx.typeId){
+        state = await api("PATCH","/api/items/"+edCtx.itemId,{typeId, who});
+      }
     }
     closeEdit(); render(); toast("已保存");
   }catch(e){ toast(e.message || "保存失败"); }
@@ -1662,8 +1667,8 @@ function renderAll(){
         ${items.map(i=>`<div class="all-row">
           <span class="catdot" style="background:${catColor(i.category)}"></span>
           <div class="body" onclick="openItemEdit(${i.id})"><b>${esc(i.name)}</b>
-            <small>${esc(i.category)}${i.note?" · "+esc(i.note):""}</small></div>
-          <button class="mini-edit" onclick="openItemEdit(${i.id})" title="改名字/数量/备注">✎</button>
+            <small>${esc(i.category)}${noteOf(i)?" · 📝 "+esc(noteOf(i)):""}</small></div>
+          <button class="mini-edit" onclick="openItemEdit(${i.id})" title="改名字 · 看备注">✎</button>
           <button class="takeout" onclick="removeItem(${i.id})">取出</button>
         </div>`).join("")}
       </div>`);
