@@ -668,7 +668,7 @@ body.fb .cabs{display:block}
     <div class="logs" id="logs"></div>
   </div>
 
-  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1159</span></div>
+  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1160</span></div>
 </div>
 
 <div class="mask" id="mask"></div>
@@ -754,6 +754,10 @@ body.fb .cabs{display:block}
     <button class="icon-btn" id="libClose">✕</button>
   </div>
   <div class="sheet-body">
+    <div class="lib-filter">
+      <span class="fl">🔍 筛选</span>
+      <select class="field" id="libFilter" style="flex:1;margin:0"></select>
+    </div>
     <div class="items" id="libList"></div>
   </div>
   <div class="form">
@@ -762,12 +766,9 @@ body.fb .cabs{display:block}
       <input class="field" id="libName" placeholder="如：冬被 / 凉席 / 毛巾被" maxlength="40">
     </div>
     <div class="chips wrap" id="catChips"></div>
-    <button class="btn-primary" id="libAdd">加到物品库</button>
-    <div class="form-row" style="margin-top:10px">
-      <input class="field" id="newCatName" placeholder="加个新种类，如 窗帘 / 抱枕" maxlength="10">
-      <button class="top-btn solid" id="catAddBtn">加种类</button>
-    </div>
-    <div class="form-tip">上面是物品种类，点 ✕ 可以删掉不用的；改一次名字，所有柜子里都跟着改</div>
+    <button class="chips-toggle" id="catFoldBtn" style="display:none">展开全部 ▾</button>
+    <button class="btn-primary" id="libAdd" style="margin-top:8px">加到物品库</button>
+    <div class="form-tip">种类只在右上角「⋯ → 加种类」里添加；点种类旁的 ✕ 可以删掉不用的；改一次名字，所有柜子里都跟着改</div>
   </div>
 </section>
 
@@ -791,6 +792,9 @@ body.fb .cabs{display:block}
       <span class="grow">刷新数据<b style="font-weight:400"></b></span><span class="arr">›</span></button>
     <button class="menu-row" id="menuCabs"><span class="ic">🚪</span>
       <span class="grow">柜子设置<small>新增柜子、改名字/编号/大小、删除柜子 · 全家同步</small></span>
+      <span class="arr">›</span></button>
+    <button class="menu-row" id="menuAddCat"><span class="ic">🏷</span>
+      <span class="grow">加种类<small>新增物品种类（被子 / 窗帘 / 抱枕…） · 全家同步</small></span>
       <span class="arr">›</span></button>
     <button class="menu-row" id="menuWho"><span class="ic">👤</span>
       <span class="grow">我是谁<small>放东西、取东西时会记下名字 · 现在是「<b id="whoName">家人</b>」</small></span>
@@ -843,6 +847,12 @@ body.fb .cabs{display:block}
 .chips-toggle{width:100%;margin-top:2px;padding:9px;border-radius:11px;font-size:12px;color:#6E8F7C;
   background:#F4EEE1;border:1px dashed #DCCFB6;font-family:inherit}
 .chips-toggle:active{transform:scale(.985)}
+/* 物品库：种类筛选下拉 + 种类 chips 只露一行可展开 */
+.lib-filter{display:flex;align-items:center;gap:8px;margin:0 0 10px}
+.lib-filter .fl{font-size:12px;color:#8E8271;flex:0 0 auto}
+.lib-filter select{appearance:none;-webkit-appearance:none;background:#F6F2E9;border:1px solid #EAE2D2;
+  border-radius:10px;padding:9px 12px;font-size:13px;color:var(--ink)}
+#catFoldBtn{margin-top:2px}
 </style>
 
 <!-- 柜子设置（全局）：新增 / 修改 / 删除柜子 -->
@@ -920,7 +930,7 @@ body.fb .cabs{display:block}
 <div class="toast" id="toast"></div>
 
 <script>
-const VER = "v1159";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
+const VER = "v1160";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
 const BASE_COLOR = {"被子":"#9DC0AD","床单":"#E3C878","被套":"#DDA077","枕头":"#A9BEDB","毛毯":"#CFA6C0","其他":"#C3B9AA"};
 const PALETTE = ["#8FB0A8","#D9B36C","#B3A0C9","#C7A98B","#94AEBB","#D6A0A0","#A8B98E"];
 /* 种类来自后端，可以自己加，颜色按顺序分配 */
@@ -1382,10 +1392,9 @@ function renderTypeChips(){
   applyChipsFold();
 }
 
-/* 物品候选列表：默认只露两行，多了出「展开全部」；点开新柜子时重新收起 */
-let chipsOpen = false;
-function applyChipsFold(){
-  const box = el("typeChips"), btn = el("chipFoldBtn");
+/* chips 折叠通用：默认只露 rows 行，多了出「展开全部/收起」按钮 */
+function foldChips(boxId, btnId, rows, open, unit){
+  const box = el(boxId), btn = el(btnId);
   if(!box || !btn) return;
   box.classList.remove("folded");
   box.style.maxHeight = "";
@@ -1394,19 +1403,26 @@ function applyChipsFold(){
   if(!first || !first.offsetHeight) return;   /* 弹窗没显示时不量 */
   const h = first.offsetHeight;
   const gap = 7;                               /* .chips 的 gap */
-  const twoRows = h * 2 + gap;
+  const limit = h * rows + gap * (rows - 1);
   const n = box.querySelectorAll(".chip").length;
-  if(box.scrollHeight <= twoRows + 4) return;  /* 两行装得下，不用折叠 */
-  if(!chipsOpen){
+  if(box.scrollHeight <= limit + 4) return;    /* 装得下，不用折叠 */
+  if(!open){
     box.classList.add("folded");
-    box.style.maxHeight = twoRows + "px";
-    btn.textContent = "展开全部（共 " + n + " 种）▾";
+    box.style.maxHeight = limit + "px";
+    btn.textContent = "展开全部（共 " + n + " " + (unit||"个") + "）▾";
   }else{
     btn.textContent = "收起 ▴";
   }
   btn.style.display = "";
 }
+/* 物品候选列表：默认只露两行，多了出「展开全部」；点开新柜子时重新收起 */
+let chipsOpen = false;
+function applyChipsFold(){ foldChips("typeChips","chipFoldBtn",2,chipsOpen,"种"); }
 el("chipFoldBtn").onclick = ()=>{ chipsOpen = !chipsOpen; applyChipsFold(); };
+/* 物品库的种类：只露一行，多了折叠，展开看全部 */
+let catChipsOpen = false;
+function applyCatFold(){ foldChips("catChips","catFoldBtn",1,catChipsOpen,"种"); }
+el("catFoldBtn").onclick = ()=>{ catChipsOpen = !catChipsOpen; applyCatFold(); };
 
 /* 柜子底部手动新增：填物品名字 + 下拉选种类（被子/枕头/床单…）→ 直接放入 */
 async function quickAdd(){
@@ -1824,10 +1840,11 @@ function closeLib(){
 function renderLib(){
   const types = typesNow().slice().sort((a,b)=>a.name.localeCompare(b.name,"zh-Hans-CN"));
   const outSum = types.reduce((s,t)=>s + outsideOf(t), 0);
+  const shown = libFilterVal ? types.filter(t=>t.category===libFilterVal) : types;
   el("libSub").textContent = types.length
-    ? `${curFloor} 共 ${types.length} 种 · 柜内 ${floorCab(curFloor)} 件 · 柜外 ${outSum} 件（其他楼层各有一份自己的）`
+    ? `${curFloor} 共 ${types.length} 种 · 柜内 ${floorCab(curFloor)} 件 · 柜外 ${outSum} 件${libFilterVal ? ` · 筛选「${libFilterVal}」${shown.length} 种` : ""}（其他楼层各有一份自己的）`
     : `${curFloor} 的物品库还没有东西，先在下面加一个`;
-  el("libList").innerHTML = types.length ? types.map(t=>`
+  el("libList").innerHTML = shown.length ? shown.map(t=>`
     <div class="lib-row">
       <span class="cat" style="width:9px;height:9px;border-radius:50%;background:${catColor(t.category)};flex:0 0 auto"></span>
       <div class="body" onclick="openTypeEdit(${t.id})" title="点开可看/改备注">
@@ -1837,10 +1854,27 @@ function renderLib(){
       ${!placeOf(t) ? `<button class="mini-edit" style="width:auto;padding:0 9px;border-radius:999px;font-size:11px" onclick="putBackPick(${t.id},event)" title="放进柜子">放回柜子</button>` : ""}
       <button class="mini-edit" onclick="openTypeEdit(${t.id})" title="改名/换分类/在用">✎</button>
       <button class="del" onclick="delType(${t.id})" title="删除">🗑</button>
-    </div>`).join("") : `<div class="empty-state"><span class="big">📦</span>物品库是空的</div>`;
+    </div>`).join("")
+    : (types.length
+       ? `<div class="empty-state"><span class="big">🔍</span>没有「${esc(libFilterVal)}」种类的物品<br><span style="font-size:11.5px;color:#B3A794">换一个种类，或选「全部种类」看看</span></div>`
+       : `<div class="empty-state"><span class="big">📦</span>物品库是空的</div>`);
+  renderLibFilter();
   renderCatChips();
 }
-/* 种类：点名字＝给新物品选种类，点 ✕＝删掉这个种类 */
+/* 种类筛选下拉：全部 + 每个种类（带数量） */
+let libFilterVal = "";
+function renderLibFilter(){
+  const sel = el("libFilter");
+  const cur = libFilterVal;
+  sel.innerHTML = `<option value="">全部种类（${typesNow().length}）</option>` +
+    cats().map(c=>{
+      const n = typesNow().filter(t=>t.category===c).length;
+      return `<option value="${esc(c)}" ${c===cur?"selected":""}>${esc(c)}（${n}）</option>`;
+    }).join("");
+  if(cur && !cats().includes(cur)){ libFilterVal = ""; }
+}
+el("libFilter").onchange = ()=>{ libFilterVal = el("libFilter").value; renderLib(); };
+/* 种类：点名字＝给新物品选种类，点 ✕＝删掉这个种类；只露一行，多了折叠 */
 function renderCatChips(){
   const list = cats();
   if(!list.includes(libCat)) libCat = list[0];
@@ -1849,6 +1883,7 @@ function renderCatChips(){
       <span onclick="pickLibCat('${esc(c)}')">${esc(c)}</span>
       <i class="x" onclick="delCat('${esc(c)}', event)">✕</i>
     </div>`).join("");
+  applyCatFold();
 }
 function pickLibCat(c){ libCat = c; renderCatChips(); }
 async function addType(){
@@ -1859,15 +1894,17 @@ async function addType(){
     el("libName").value = ""; render(); toast(`已加进 ${curFloor} 的物品库`);
   }catch(e){ toast(e.message || "添加失败"); }
 }
-async function addCat(){
-  const name = el("newCatName").value.trim();
-  if(!name){ toast("先填种类名称"); el("newCatName").focus(); return; }
-  try{
-    state = await api("POST","/api/cats",{name, who});
-    el("newCatName").value = "";
-    libCat = name; render(); toast("已加种类「" + name + "」");
-  }catch(e){ toast(e.message || "添加失败"); }
-}
+/* 加种类：收进右上角「⋯ 更多」菜单，弹自绘输入框 */
+el("menuAddCat").onclick = ()=>{
+  closeMore();
+  askConfirm("加一个新种类", "加完在物品库和柜子里都能用", async n=>{
+    if(!n) return;
+    try{
+      state = await api("POST","/api/cats",{name:n, who});
+      render(); toast("已加种类「" + n + "」");
+    }catch(e){ toast(e.message || "添加失败"); }
+  }, {icon:"🏷", okText:"添加", input:"新种类的名字（如：窗帘 / 抱枕）", danger:false});
+};
 async function delCat(name, ev){
   if(ev) ev.stopPropagation();
   const row = (state.cats || []).find(x=>x.name === name);
@@ -1884,8 +1921,6 @@ async function delCat(name, ev){
 el("libAdd").onclick = addType;
 el("libName").addEventListener("keydown", e=>{ if(e.key==="Enter") addType(); });
 el("qaName").addEventListener("keydown", e=>{ if(e.key==="Enter") quickAdd(); });
-el("catAddBtn").onclick = addCat;
-el("newCatName").addEventListener("keydown", e=>{ if(e.key==="Enter") addCat(); });
 el("libBtn").onclick = openLib;
 
 /* ---------- 放回柜子：选一个柜子收进去 ---------- */
