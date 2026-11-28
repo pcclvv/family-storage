@@ -668,7 +668,7 @@ body.fb .cabs{display:block}
     <div class="logs" id="logs"></div>
   </div>
 
-  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1160</span></div>
+  <div class="foot-note">家里几个人都可以用 · 柜子半透明，东西在里面也能看见 · <span id="appVer">v1161</span></div>
 </div>
 
 <div class="mask" id="mask"></div>
@@ -761,14 +761,17 @@ body.fb .cabs{display:block}
     <div class="items" id="libList"></div>
   </div>
   <div class="form">
-    <div class="form-label">新增一种物品</div>
-    <div class="form-row">
-      <input class="field" id="libName" placeholder="如：冬被 / 凉席 / 毛巾被" maxlength="40">
+    <button class="chips-toggle" id="libAddToggle" style="margin-top:0">＋ 新增一种物品 ▾</button>
+    <div id="libAddBody" style="display:none">
+      <div class="form-label" style="margin-top:10px">新增一种物品</div>
+      <div class="form-row">
+        <input class="field" id="libName" placeholder="如：冬被 / 凉席 / 毛巾被" maxlength="40">
+      </div>
+      <div class="chips wrap" id="catChips"></div>
+      <button class="chips-toggle" id="catFoldBtn" style="display:none">展开全部 ▾</button>
+      <button class="btn-primary" id="libAdd" style="margin-top:8px">加到物品库</button>
+      <div class="form-tip">种类只在右上角「⋯ → 加种类」里添加；点种类旁的 ✕ 可以删掉不用的；改一次名字，所有柜子里都跟着改</div>
     </div>
-    <div class="chips wrap" id="catChips"></div>
-    <button class="chips-toggle" id="catFoldBtn" style="display:none">展开全部 ▾</button>
-    <button class="btn-primary" id="libAdd" style="margin-top:8px">加到物品库</button>
-    <div class="form-tip">种类只在右上角「⋯ → 加种类」里添加；点种类旁的 ✕ 可以删掉不用的；改一次名字，所有柜子里都跟着改</div>
   </div>
 </section>
 
@@ -930,7 +933,7 @@ body.fb .cabs{display:block}
 <div class="toast" id="toast"></div>
 
 <script>
-const VER = "v1160";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
+const VER = "v1161";  /* 与服务端 PAGE_VER 对齐；不一致自动带新参数重载，绕过手机缓存 */
 const BASE_COLOR = {"被子":"#9DC0AD","床单":"#E3C878","被套":"#DDA077","枕头":"#A9BEDB","毛毯":"#CFA6C0","其他":"#C3B9AA"};
 const PALETTE = ["#8FB0A8","#D9B36C","#B3A0C9","#C7A98B","#94AEBB","#D6A0A0","#A8B98E"];
 /* 种类来自后端，可以自己加，颜色按顺序分配 */
@@ -1861,8 +1864,8 @@ function renderLib(){
   renderLibFilter();
   renderCatChips();
 }
-/* 种类筛选下拉：全部 + 每个种类（带数量） */
-let libFilterVal = "";
+/* 种类筛选下拉：全部 + 每个种类（带数量）；默认筛「被子」 */
+let libFilterVal = "被子";
 function renderLibFilter(){
   const sel = el("libFilter");
   const cur = libFilterVal;
@@ -1874,6 +1877,19 @@ function renderLibFilter(){
   if(cur && !cats().includes(cur)){ libFilterVal = ""; }
 }
 el("libFilter").onchange = ()=>{ libFilterVal = el("libFilter").value; renderLib(); };
+
+/* 新增物品表单：默认折叠，点一下才展开 */
+let libAddOpen = false;
+el("libAddToggle").onclick = ()=>{
+  libAddOpen = !libAddOpen;
+  el("libAddBody").style.display = libAddOpen ? "" : "none";
+  el("libAddToggle").textContent = libAddOpen ? "收起新增 ▴" : "＋ 新增一种物品 ▾";
+  if(libAddOpen){
+    /* 展开后种类 chips 才量得到高度，重新算一次折叠 */
+    requestAnimationFrame(()=>applyCatFold());
+    setTimeout(()=>el("libName").focus(), 60);  /* 主动点开才弹键盘 */
+  }
+};
 /* 种类：点名字＝给新物品选种类，点 ✕＝删掉这个种类；只露一行，多了折叠 */
 function renderCatChips(){
   const list = cats();

@@ -69,13 +69,18 @@ def load_baseline():
 
 
 def missing_keys(base, live):
-    """基准里有、线上没有的记录（按主键）。空＝没丢数据"""
+    """基准里有、线上没有的记录（按主键）。空＝没丢数据。
+    logs 例外：系统从 v1161 起只保留最近 10 条动态，更早的属正常清理，不算丢失。"""
     PK = {"rooms": "id", "cabinets": "id", "types": "id", "cats": "name",
           "items": "id", "logs": "id", "config": "key"}
+    LOG_KEEP = 10
     miss = {}
     for t in TABLES:
         pk = PK[t]
-        b = {str(r.get(pk)) for r in base.get(t, [])}
+        rows = base.get(t, [])
+        if t == "logs":
+            rows = sorted(rows, key=lambda r: r.get("id") or 0)[-LOG_KEEP:]
+        b = {str(r.get(pk)) for r in rows}
         l = {str(r.get(pk)) for r in live.get(t, [])}
         if b - l:
             miss[t] = sorted(b - l)

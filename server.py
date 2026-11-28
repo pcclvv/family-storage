@@ -25,7 +25,7 @@ CATEGORIES = ["被子", "床单", "被套", "枕头", "毛毯", "其他"]   # �
 ROOM_PREFIX = ["A", "B", "C", "D", "E", "F", "G", "H"]
 FLOORS = ["F2", "F3", "F4"]     # 楼层：每层房间与柜子结构相同，柜内物品各自独立
 DEFAULT_FLOOR = "F3"            # 首页默认进 F3
-PAGE_VER = "v1160"   # 页面版本号，前端拿它对比，不一致就强制重载（防手机缓存旧页面）
+PAGE_VER = "v1161"   # 页面版本号，前端拿它对比，不一致就强制重载（防手机缓存旧页面）
 _db_lock = threading.Lock()
 
 
@@ -134,6 +134,7 @@ def init_db():
     migrate(c)
     merge_duplicate_types(c)
     normalize_single(c)
+    prune_logs(c)          # 老库启动时把历史动态清到 10 条以内
     ensure_cats(c)
     c.execute("CREATE INDEX IF NOT EXISTS idx_items_type ON items(type_id)")
     if fresh or c.execute("SELECT COUNT(*) n FROM rooms").fetchone()["n"] == 0:
@@ -310,6 +311,16 @@ def seed(c):
 def log(c, who, action, detail):
     c.execute("INSERT INTO logs(who,action,detail,at) VALUES(?,?,?,?)",
               (who or "家人", action, detail, now_str()))
+    prune_logs(c)
+
+
+LOG_KEEP = 10   # 最近动态只保留最近 10 条，更早的直接删掉
+
+
+def prune_logs(c):
+    """只留最近 %d 条动态：写入后和启动时都各清一次""" % LOG_KEEP
+    c.execute("DELETE FROM logs WHERE id NOT IN "
+              "(SELECT id FROM logs ORDER BY id DESC LIMIT ?)", (LOG_KEEP,))
 
 
 def _cab_sort_key(code):
@@ -333,7 +344,7 @@ def get_state():
     types = [dict(r) for r in c.execute("SELECT * FROM types ORDER BY sort, id")]
     cats_rows = [dict(r) for r in c.execute("SELECT * FROM cats ORDER BY sort, id")]
     cats = [r["name"] for r in cats_rows]
-    logs = [dict(r) for r in c.execute("SELECT * FROM logs ORDER BY id DESC LIMIT 12")]
+    logs = [dict(r) for r in c.execute("SELECT * FROM logs ORDER BY id DESC LIMIT 10")]
     cfg = {r["key"]: r["value"] for r in c.execute("SELECT * FROM config")}
     for it in items:
         if it.get("tname"):
